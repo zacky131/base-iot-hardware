@@ -3,7 +3,7 @@
   Complete project details at https://RandomNerdTutorials.com/esp32-cam-ov2640-camera-settings/
 *********/
 
-int waittime = 30; //how long to wait to send new picture, in seconds
+int waittime = 30; //how long to wait to save new picture, in seconds
 #include "esp_camera.h"
 #include "FS.h"                // SD Card ESP32
 #include "SD_MMC.h"            // SD Card ESP32
