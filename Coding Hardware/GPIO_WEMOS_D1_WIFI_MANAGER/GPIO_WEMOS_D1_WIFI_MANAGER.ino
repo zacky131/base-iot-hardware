@@ -50,7 +50,7 @@ float duration, distance;
 // Variable for hydroponic sensor 
 float tdsValue, temperature, voltage, phVal;
 
-char thingsboardServer[] = "demo.thingsboard.io";
+char thingsboardServer[] = "178.128.20.61";
 WiFiClient wifi;
 PubSubClient client(wifi);
 int status = WL_IDLE_STATUS;
