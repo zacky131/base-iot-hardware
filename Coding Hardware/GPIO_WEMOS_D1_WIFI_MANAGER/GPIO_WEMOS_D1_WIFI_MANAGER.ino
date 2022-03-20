@@ -2,7 +2,6 @@
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
 #include <WiFiManager.h>
-//#include <WiFi.h>
 
 #include <EEPROM.h>
 
@@ -20,7 +19,6 @@
 Ticker periodicTicker;
 
 ///////////////////////////////////////////////////// FIRST SETUP
-const char* MQTT_ID = "ESP8266 Device";
 #define TOKEN "K3ZLw3PpqpcbKodz2xhg"
 
 
@@ -53,7 +51,7 @@ float duration, distance;
 float tdsValue, temperature, voltage, phVal;
 
 char thingsboardServer[] = "demo.thingsboard.io";
-WiFiManager wifi;
+WiFiClient wifi;
 PubSubClient client(wifi);
 int status = WL_IDLE_STATUS;
 
@@ -236,11 +234,12 @@ void set_gpio_status(int pin, boolean enabled) {
 
 void InitWiFi() {
   WiFi.mode(WIFI_STA);
+  WiFiManager wm;
   Serial.println("Connecting to AP ...");
   // attemperaturet to connect to WiFi network
 
   bool res;
-  res = wifi.autoConnect("ESPWiFiManager","password");
+  res = wm.autoConnect("ESPWiFiManager");
   while (!res) {
     delay(500);
     Serial.print(".");
@@ -255,7 +254,7 @@ void reconnect() {
   while (!client.connected()) {
     Serial.print("Connecting to ThingsBoard node ...");
     // Attemperaturet to connect (clientId, username, password)
-    if (client.connect(MQTT_ID, TOKEN, NULL) ) {
+    if (client.connect("ESP8266 Device", TOKEN, NULL) ) {
       Serial.println( "[DONE]" );
       // Subscribing to receive RPC requests
       client.subscribe("v1/devices/me/rpc/request/+");
