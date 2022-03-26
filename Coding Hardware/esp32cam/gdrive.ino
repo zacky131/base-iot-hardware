@@ -1,23 +1,17 @@
-const char* ssid     = "ssid";   //your network SSID
-const char* password = "pass";   //your network password
- 
-String myScript = "/macros/s/AKfycbwVb2OkhKHsZfYWfuIH4vmZOhBKtvVwnYatXG_SJZFBxgC68cuzuoTNWxF9FQujctY3Zg/exec";    //Create your Google Apps Script and replace the "myScript" path.
-String myLineNotifyToken = "myToken=**********";    //Line Notify Token. You can set the value of xxxxxxxxxx empty if you don't want to send picture to Linenotify.
-String myFoldername = "&myFoldername=ESP32-CAM";
-String myFilename = "&myFilename=ESP32-CAM.jpg";
-String myImage = "&myFile=";
-int waittime = 30; //how long to wait to send a new picture, in seconds
-
-#include <WiFi.h>
+#include <WiFiManager.h>
 #include <WiFiClientSecure.h>
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
 #include "Base64.h"
  
 #include "esp_camera.h"
- 
-// WARNING!!! Make sure that you have either selected ESP32 Wrover Module,
-//            or another board which has PSRAM enabled
+String myFoldername;
+String myScript = "/macros/s/AKfycbwVb2OkhKHsZfYWfuIH4vmZOhBKtvVwnYatXG_SJZFBxgC68cuzuoTNWxF9FQujctY3Zg/exec";    //Create your Google Apps Script and replace the "myScript" path.
+String myLineNotifyToken = "myToken=";    //Line Notify Token. You can set the value of xxxxxxxxxx empty if you don't want to send picture to Linenotify.
+String folder = "&myFoldername=";
+String myFilename = "&myFilename=ESP32-CAM.jpg";
+String myImage = "&myFile=";
+int waittime = 30; //in seconds
  
 //CAMERA_MODEL_AI_THINKER
 #define PWDN_GPIO_NUM     32
@@ -45,24 +39,22 @@ void setup()
   Serial.begin(115200);
   delay(10);
   
-  WiFi.mode(WIFI_STA);
- 
-  Serial.println("");
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-  WiFi.begin(ssid, password);  
-  
-  long int StartTime=millis();
-  while (WiFi.status() != WL_CONNECTED) 
-  {
-    delay(500);
-    if ((StartTime+10000) < millis()) break;
-  } 
- 
+//  WiFi.mode(WIFI_STA);
+  WiFiManager wm;
+//  wm.setDebugOutput(false);
+  WiFiManagerParameter custom_folder("folder", "Enter folder name here", "ESP32-CAM", 50);
+  wm.addParameter(&custom_folder);
+  if(!wm.autoConnect("CameraAP","password")) Serial.println("Failed to connect");
+  else { 
+      Serial.print("Connected to ");
+      Serial.println(WiFi.SSID());
+  }
+  myFoldername = folder + custom_folder.getValue();
+  Serial.println(myFoldername);
   Serial.println("");
   Serial.println("STAIP address: ");
-  Serial.println(WiFi.localIP());
-    
+  Serial.println(WiFi.localIP()); 
+  
   Serial.println("");
  
   if (WiFi.status() != WL_CONNECTED) {
