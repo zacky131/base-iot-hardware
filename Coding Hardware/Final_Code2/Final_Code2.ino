@@ -166,7 +166,14 @@ void loop() {
   }
     getNprintData();
     client.loop();
+  
 }
+// cek ketinggian air, kalo masih bisa ditambah:
+  // cek TDS, kalo kurang:
+    // turn on nutrisi A B sampai melebihi target, pisah relay (2 relay)
+    // turn on valve (air) jadiin boolean 0 atau 1
+// setiap 5 menit sekali?
+
 void getNprintData(){
    //code for ultrasonic distance sensor
     // Set the trigger pin LOW for 2uS
