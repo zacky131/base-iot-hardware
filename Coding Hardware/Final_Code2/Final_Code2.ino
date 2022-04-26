@@ -161,6 +161,7 @@ void setup() {
   dht.begin();
   
   //interupt
+  // bisa ubah sampling time di sini
   periodicTicker.attach_ms(5000, sendData_toServer);
 }
 ///////////////////////////////////////////////////////// LOOP ///////////////////////////////////////
@@ -173,55 +174,93 @@ void loop() {
   
 }
 
+//initial values 0
+float distance_min_5 = 0;
+float distance_min_4 = 0;
+float distance_min_3 = 0;
+float distance_min_2 = 0;
+float distance_min_1 = 0;
+float avg_distance = 0;
+
+// hapus distance kalo sus, rata rata kalo aman
+void MA_distance(float new_distance){ // data baru setiap 5 detik
+  if (new_distance < 2.5*avg_distance){ //kalo kejauhan diskip aja
+    avg_distance = (distance_min_5 + distance_min_4 + distance_min_3 + distance_min_2 + distance_min_1 + new_distance)/6;
+    distance_min_5 = distance_min_4;
+    distance_min_4 = distance_min_3;
+    distance_min_3 = distance_min_2;
+    distance_min_2 = distance_min_1;
+    distance_min_1 = new_distance;
+  }
+}
+
+// automatic/manual switch belom
+
 
 // relay_1 = Nutrisi A
 // relay_2 = Nutrisi B
 // relay_3 = Air
-// relay_4 = ?? 
-void relaycontrol(float distance, int tds){
-  int ppm_setting = 1200;
-  int max_water_threshold = 20; //cm? mm?
+// relay_4 = ??
+void relaycontrol(float avg_distance, int measured_ppm, int ppm_setting, float a_b_ratio){
+  // jadiin parameter fungsi
+  // int ppm_setting = 1200; //misal
+  int max_ppm_setting = ppm_setting + 100;
+  int min_ppm_setting = ppm_setting - 200; //1000
   int time = 5000; //in miliseconds
   // rata-rata distance (moving average)
-  float a_b_ratio = 1; // = nutrisi_a / nutrisi_b
-  while (distance > max_water_threshold){// cek ketinggian air, kalo masih bisa ditambah:
-    while (tds < (ppm_setting+100)){// cek TDS, kalo kurang:
-      // cek perlu lebih banyak nutrisi A ato B
-      if (a_b_ratio < 1){
-        // a<b
-        // nyalain b lebih lama
-        set_gpio_status(relay_2, 1); //Nutrisi B
-        delay(floor(time*a_b_ratio));
-        set_gpio_status(relay_1, 1); //Nutrisi A
-        delay(time);
+  // float a_b_ratio = nutrisi_a / nutrisi_b
+  int max_distance = 40; //airnya tinggal dikit
+  int min_distance = 20; //airnya udah penuh
+
+  if ((avg_distance > max_distance) || (measured_ppm < min_ppm_setting)){
+    // avg_distance ngelewatin batas max_distance, atau ppm ngelewatin batas minimal
+    while (avg_distance > min_distance){
+      // selama masih belom sampe batas 20 cm
+      while (measured_ppm < max_ppm_setting){
+        // selama masih belom sampe ppm 1300
+        // cek perlu lebih banyak nutrisi A ato B
+        if (a_b_ratio < 1){
+          // a<b, nyalain b lebih lama
+          set_gpio_status(relay_1, 1); //Nutrisi A
+          set_gpio_status(relay_2, 1); //Nutrisi B
+
+          delay(floor(time*a_b_ratio));
+          set_gpio_status(relay_1, 0);//a
+
+          delay(time - floor(time*a_b_ratio));
+          // set_gpio_status(relay_2, 0); //b
+        }
+        else if (a_b_ratio > 1){
+          // a>b, nyalain a lebih lama
+          set_gpio_status(relay_1, 1); //Nutrisi A
+          set_gpio_status(relay_2, 1); //Nutrisi B
+
+          delay(floor(time/a_b_ratio));
+          set_gpio_status(relay_2, 0); //b
+
+          delay(time - floor(time/a_b_ratio));
+          // set_gpio_status(relay_1, 0); //a
+        }
+        else{
+          // a=b, nyalain bareng
+          set_gpio_status(relay_1, 1); //Nutrisi A
+          set_gpio_status(relay_2, 1); //Nutrisi B
+        }
+        // turn on nutrisi A B sampai melebihi target, pisah relay (2 relay)
+        // pake fungsi set_gpio_status(int pin, boolean enabled)
       }
-      else if (a_b_ratio > 1){
-        // a>b
-        // nyalain a lebih lama
-        set_gpio_status(relay_1, 1); //Nutrisi A
-        delay(floor(time*a_b_ratio));
-        set_gpio_status(relay_2, 1); //Nutrisi B
-        delay(time);
-      }
-      else{ //a=b
-    
-        // nyalain bareng
-        set_gpio_status(relay_1, 1); //Nutrisi A
-        set_gpio_status(relay_2, 1); //Nutrisi B
-      }
-      // turn on nutrisi A B sampai melebihi target, pisah relay (2 relay)
-      // set_gpio_status(int pin, boolean enabled)
+      // turn on valve (air) jadiin boolean 0 atau 1
+      set_gpio_status(relay_1, 0); //a
+      set_gpio_status(relay_2, 0); //b
+      set_gpio_status(relay_3, 1); //air
     }
-    // turn on valve (air) jadiin boolean 0 atau 1
-    set_gpio_status(relay_3, 1);
   }
-  
   // turn off all relay
   set_gpio_status(relay_1, 0);
   set_gpio_status(relay_2, 0);
   set_gpio_status(relay_3, 0);
   // set_gpio_status(relay_4, 0);
-    
+  
 // setiap 5 menit sekali?
 }
 
@@ -244,9 +283,9 @@ void getNprintData(){
    
     // Determine distance from duration
     // Use 343 metres per second as speed of sound
-    // Divide by 1000 as we want millimeters
+    // Divide by 100 as we want centimeters
    
-    distance = (duration / 2) * 0.343;
+    distance = (duration / 2) * 3.43;
     
     // Delay before repeating measurement
     delay(100);
