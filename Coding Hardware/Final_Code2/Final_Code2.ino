@@ -24,13 +24,17 @@ Preferences preferences;
 #include "DFRobot_PH.h"
 
 //Ticker for interrupt mqtt message from thingsboard (SWITCH CONTROL)
-#include <Ticker.h>
+#include <Ticker.h> 
 Ticker periodicTicker;
 
 ///////////////////////////////////////////////////// FIRST SETUP
 #define TOKEN "9NhrINrrAYd0Cmg1nT1l"
 
 //define relay pin
+// relay_1 = Nutrisi A
+// relay_2 = Nutrisi B
+// relay_3 = Air
+// relay_4 = ?? 
 #define relay_1 18 //13
 #define relay_2 19 //12
 #define relay_3 23 //11
@@ -168,11 +172,59 @@ void loop() {
     client.loop();
   
 }
-// cek ketinggian air, kalo masih bisa ditambah:
-  // cek TDS, kalo kurang:
-    // turn on nutrisi A B sampai melebihi target, pisah relay (2 relay)
+
+
+// relay_1 = Nutrisi A
+// relay_2 = Nutrisi B
+// relay_3 = Air
+// relay_4 = ?? 
+void relaycontrol(float distance, int tds){
+  int ppm_setting = 1200;
+  int max_water_threshold = 20; //cm? mm?
+  int time = 5000; //in miliseconds
+  // rata-rata distance (moving average)
+  float a_b_ratio = 1; // = nutrisi_a / nutrisi_b
+  while (distance > max_water_threshold){// cek ketinggian air, kalo masih bisa ditambah:
+    while (tds < (ppm_setting+100)){// cek TDS, kalo kurang:
+      // cek perlu lebih banyak nutrisi A ato B
+      if (a_b_ratio < 1){
+        // a<b
+        // nyalain b lebih lama
+        set_gpio_status(relay_2, 1); //Nutrisi B
+        delay(floor(time*a_b_ratio));
+        set_gpio_status(relay_1, 1); //Nutrisi A
+        delay(time);
+      }
+      else if (a_b_ratio > 1){
+        // a>b
+        // nyalain a lebih lama
+        set_gpio_status(relay_1, 1); //Nutrisi A
+        delay(floor(time*a_b_ratio));
+        set_gpio_status(relay_2, 1); //Nutrisi B
+        delay(time);
+      }
+      else{ //a=b
+    
+        // nyalain bareng
+        set_gpio_status(relay_1, 1); //Nutrisi A
+        set_gpio_status(relay_2, 1); //Nutrisi B
+      }
+      // turn on nutrisi A B sampai melebihi target, pisah relay (2 relay)
+      // set_gpio_status(int pin, boolean enabled)
+    }
     // turn on valve (air) jadiin boolean 0 atau 1
+    set_gpio_status(relay_3, 1);
+  }
+  
+  // turn off all relay
+  set_gpio_status(relay_1, 0);
+  set_gpio_status(relay_2, 0);
+  set_gpio_status(relay_3, 0);
+  // set_gpio_status(relay_4, 0);
+    
 // setiap 5 menit sekali?
+}
+
 
 void getNprintData(){
    //code for ultrasonic distance sensor
