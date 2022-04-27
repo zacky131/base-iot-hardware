@@ -61,8 +61,8 @@ DHT dht(DHTPIN, DHTTYPE);
 #define TdsSensorPin 39 //A5
 #define PH_PIN 36 //A4
 
-// SDAPIN = 25; //3
-// SCLPIN = 26; //2
+// SCLPIN = 25; //3
+// SDAPIN = 26; //2
 
 LiquidCrystal_I2C lcd(0x27,20,4);  // set the LCD address to 0x27 (SDA and SCL pin) for a 16 chars and 2 line display
 
