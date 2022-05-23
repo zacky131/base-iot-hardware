@@ -61,8 +61,8 @@ DHT dht(DHTPIN, DHTTYPE);
 #define TdsSensorPin 39 //A5
 #define PH_PIN 36 //A4
 
-// SCLPIN = 25; //3
-// SDAPIN = 26; //2
+// SDAPIN = 25; //2
+// SCLPIN = 26; //3
 
 LiquidCrystal_I2C lcd(0x27,20,4);  // set the LCD address to 0x27 (SDA and SCL pin) for a 16 chars and 2 line display
 
@@ -91,6 +91,10 @@ float slope, intercept, t, h;
   float settingPH = 7.0;
   //Starting PPM Value for setting
   float settingPPM = 500.0;
+  //Starting Distance Val for setting
+  float settingDistance = 5.0;
+  //Starting Temperature Val for setting
+  int settingTemp = 25;
     
 char thingsboardServer[] = "178.128.20.61";
 WiFiClient wifi;
@@ -754,10 +758,10 @@ menu7:
           {
           
           lcd.setCursor(0,0);
-          lcd.print("1. PH Value Setting");
+          lcd.print("1.PH Set");
           
           lcd.setCursor(0,1);
-          lcd.print("2. PPM Value Setting");
+          lcd.print("2.PPM Set");
           
           lcd.setCursor(0,3);
           lcd.print("4. Back");
@@ -857,6 +861,86 @@ menu9:
           
           if (up == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      ");  settingPPM = settingPPM+10.0; }
           if (down == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      "); settingPPM = settingPPM-10.0; }
+          if (back == LOW) { delay(300); goto menu7; }
+          }
+
+menu10:  
+          settingDistance = preferences.getFloat("sDistanceVal", 0);  
+          lcd.clear();
+          while(1)
+          {       
+          lcd.setCursor(0,0);
+          lcd.print("Distance   : ");
+          lcd.print(settingDistance,1);
+          
+          lcd.setCursor(0,2);
+          lcd.print("1. Set");
+
+          lcd.setCursor(0,3);
+          lcd.print("2. Up");
+
+          lcd.setCursor(13,2);
+          lcd.print("3. Down");
+         
+
+          lcd.setCursor(13,3);
+          lcd.print("4. Back");
+          delay(100);
+          
+          ok = digitalRead(pb_green);
+          up = digitalRead(pb_blue);
+          down = digitalRead(pb_yellow);
+          back = digitalRead(pb_red);
+          if (ok == LOW) { 
+            delay(300); 
+                      
+            preferences.putFloat("sDistanceVal", settingDistance);
+            goto menu7;
+            }
+
+          
+          if (up == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      ");  settingDistance = settingDistance + 0.1; }
+          if (down == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      "); settingDistance = settingDistance - 0.1; }
+          if (back == LOW) { delay(300); goto menu7; }
+          }
+
+menu11:  
+          settingTemp = settingTemp.getFloat("sTempVal", 0);  
+          lcd.clear();
+          while(1)
+          {         
+          lcd.setCursor(0,0);
+          lcd.print("Temperature: ");
+          lcd.print(settingTemp);
+          
+          lcd.setCursor(0,2);
+          lcd.print("1. Set");
+
+          lcd.setCursor(0,3);
+          lcd.print("2. Up");
+
+          lcd.setCursor(13,2);
+          lcd.print("3. Down");
+         
+
+          lcd.setCursor(13,3);
+          lcd.print("4. Back");
+          delay(100);
+          
+          ok = digitalRead(pb_green);
+          up = digitalRead(pb_blue);
+          down = digitalRead(pb_yellow);
+          back = digitalRead(pb_red);
+          if (ok == LOW) { 
+            delay(300); 
+                      
+            preferences.putFloat("sDistanceVal", settingTemp);
+            goto menu7;
+            }
+
+          
+          if (up == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      ");  settingTemp = settingTemp + 1; }
+          if (down == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      "); settingTemp = settingTemp - 1; }
           if (back == LOW) { delay(300); goto menu7; }
           }
 }
