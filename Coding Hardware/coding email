@@ -103,6 +103,30 @@ DallasTemperature sensors(&oneWire);
 
 DFRobot_PH ph;
 
+#include "ESP32_MailClient.h"
+// To send Emails using Gmail on port 465 (SSL), you need to create an app password: https://support.google.com/accounts/answer/185833
+#define emailSenderAccount    "binus.aso.iot@gmail.com"
+#define emailSenderPassword   "qilh fraq onxn lpbc"
+#define smtpServer            "smtp.gmail.com"
+#define smtpServerPort        465
+#define emailSubject          "[PERINGATAN] Parameter Hidroponik"
+
+// Default Recipient Email Address
+String inputMessage = "nicholassanjaya339@gmail.com";
+String enableEmailChecked = "checked";
+String inputMessage2 = "true";
+// Default Threshold temperatur air Value
+String threstemp = "25.0";
+String lastTemperature;
+// Default Threshold jarak air Value
+String threshum = "25.0";
+String lastHumidity;
+
+// Flag variable to keep track if email notification was sent or not
+bool emailSent = false;
+// The Email Sending data object contains config and data to send
+SMTPData smtpData;
+
 
 ///////////////////////////////////////////////////////// SETUP ///////////////////////////////////////
 void setup() {
@@ -262,6 +286,65 @@ void relaycontrol(float avg_distance, int measured_ppm, int ppm_setting, float a
   // set_gpio_status(relay_4, 0);
   
 // setiap 5 menit sekali?
+
+//sent email notification
+ if(temperature < threstemp.toFloat()&& inputMessage2 == "true" && !emailSent){
+      String emailMessage = String("Temperatur Melebihi Batas !!! Temperatur saat ini: ") + 
+                            String(temperature) + String("C");
+      if(sendEmailNotification(emailMessage)) {
+        Serial.println(emailMessage);
+        emailSent = true;
+      }
+      else {
+        Serial.println("Email failed to send");
+      }    
+    }
+    // Check if temperature is below threshold and if it needs to send the Email alert
+    else if(tdsValue < settingPPM() && inputMessage2 == "true" && emailSent) {
+      String emailMessage = String("Nilai TDS Melebihi Batas !!! Kelembapan saat ini: ") + 
+                            String(humidity) + String(" %");
+      if(sendEmailNotification(emailMessage)) {
+        Serial.println(emailMessage);
+        emailSent = false;
+      }
+      else {
+        Serial.println("Email failed to send");
+      }
+    }
+    //tdsValue, temperature, phVal, distance ,lux
+   else if((phVal < settingPH() && inputMessage2 == "true" && emailSent){
+    String emailMessage = String("Nilai PH Melebihi Batas !!! PH saat ini: ") + 
+                            String(phVal) + String(" %");
+      if(sendEmailNotification(emailMessage)) {
+        Serial.println(emailMessage);
+        emailSent = false;
+      }
+      else {
+        Serial.println("Email failed to send");
+      }
+    }
+   else if((distance < thresdis.toFloat() && inputMessage2 == "true" && emailSent){
+    String emailMessage = String("Jarak air Melebihi Batas !!! PH saat ini: ") + 
+                            String(phVal) + String(" %");
+      if(sendEmailNotification(emailMessage)) {
+        Serial.println(emailMessage);
+        emailSent = false;
+      }
+      else {
+        Serial.println("Email failed to send");
+      }
+    }
+//    else if((lux < threslux.toFloat() && inputMessage2 == "true" && emailSent){
+//    String emailMessage = String("PH Melebihi Batas !!! PH saat ini: ") + 
+//                            String(phVal) + String(" %");
+//      if(sendEmailNotification(emailMessage)) {
+//        Serial.println(emailMessage);
+//        emailSent = false;
+//      }
+//      else {
+//        Serial.println("Email failed to send");
+//      }
+//    }
 }
 
 
@@ -859,4 +942,50 @@ menu9:
           if (down == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      "); settingPPM = settingPPM-10.0; }
           if (back == LOW) { delay(300); goto menu7; }
           }
+}
+
+bool sendEmailNotification(String emailMessage){
+  // Set the SMTP Server Email host, port, account and password
+  smtpData.setLogin(smtpServer, smtpServerPort, emailSenderAccount, emailSenderPassword);
+
+  // For library version 1.2.0 and later which STARTTLS protocol was supported,the STARTTLS will be 
+  // enabled automatically when port 587 was used, or enable it manually using setSTARTTLS function.
+  //smtpData.setSTARTTLS(true);
+
+  // Set the sender name and Email
+  smtpData.setSender("ESP32", emailSenderAccount);
+
+  // Set Email priority or importance High, Normal, Low or 1 to 5 (1 is highest)
+  smtpData.setPriority("High");
+
+  // Set the subject
+  smtpData.setSubject(emailSubject);
+
+  // Set the message with HTML format
+  smtpData.setMessage(emailMessage, true);
+
+  // Add recipients
+  smtpData.addRecipient(inputMessage);
+
+  smtpData.setSendCallback(sendCallback);
+
+  // Start sending Email, can be set callback function to track the status
+  if (!MailClient.sendMail(smtpData)) {
+    Serial.println("Error sending Email, " + MailClient.smtpErrorReason());
+    return false;
+  }
+  // Clear all data from Email object to free memory
+  smtpData.empty();
+  return true;
+}
+
+// Callback function to get the Email sending status
+void sendCallback(SendStatus msg) {
+  // Print the current status
+  Serial.println(msg.info());
+
+  // Do something when complete
+  if (msg.success()) {
+    Serial.println("----------------");
+  }
 }
