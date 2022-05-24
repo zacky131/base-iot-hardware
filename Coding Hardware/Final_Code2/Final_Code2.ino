@@ -758,13 +758,13 @@ menu7:
           {
           
           lcd.setCursor(0,0);
-          lcd.print("1.PH Set");
+          lcd.print("1.PH|PPM Set");
           
           lcd.setCursor(0,1);
-          lcd.print("2.PPM Set");
+          lcd.print("2.Distance|Temp Set");
           
           lcd.setCursor(0,3);
-          lcd.print("4. Back");
+          lcd.print("4.Back");
           
           delay(100);
           
@@ -777,8 +777,63 @@ menu7:
           if (down == LOW) {  }
           if (back == LOW) { delay(300); goto menu; }
           }
-          
+
 menu8:
+          lcd.clear();
+          while(1)
+          {
+          
+          lcd.setCursor(0,0);
+          lcd.print("1.PH Set");
+          
+          lcd.setCursor(0,1);
+          lcd.print("2.PPM Set");
+
+          lcd.setCursor(0,10);
+          lcd.print("3.Distance Set");
+          
+          lcd.setCursor(0,3);
+          lcd.print("4. Back");
+          
+          delay(100);
+          
+          ok = digitalRead(pb_green); // merah
+          up = digitalRead(pb_blue);
+          down = digitalRead(pb_yellow);
+          back = digitalRead(pb_red);
+          if (ok == LOW) { delay(300); goto menu10; }
+          if (up == LOW) { delay(300); goto menu11; }
+          if (down == LOW) {  }
+          if (back == LOW) { delay(300); goto menu7; }
+          }
+
+menu9:
+          lcd.clear();
+          while(1)
+          {
+          
+          lcd.setCursor(0,0);
+          lcd.print("1.Distance Set");
+          
+          lcd.setCursor(0,1);
+          lcd.print("2.Temperature Set");
+          
+          lcd.setCursor(0,3);
+          lcd.print("4. Back");
+          
+          delay(100);
+          
+          ok = digitalRead(pb_green); // merah
+          up = digitalRead(pb_blue);
+          down = digitalRead(pb_yellow);
+          back = digitalRead(pb_red);
+          if (ok == LOW) { delay(300); goto menu12; }
+          if (up == LOW) { delay(300); goto menu13; }
+          if (down == LOW) {  }
+          if (back == LOW) { delay(300); goto menu7; }
+          }
+          
+menu10:
           settingPH = preferences.getFloat("sPHval", 0);  
           lcd.clear();
           while(1)
@@ -811,17 +866,16 @@ menu8:
             delay(300); 
                       
             preferences.putFloat("sPHval", settingPH);
-            goto menu7;
+            goto menu8;
             }
 
           
           if (up == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      ");  settingPH = settingPH + 0.1; }
           if (down == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      "); settingPH = settingPH - 0.1; }
-          if (back == LOW) { delay(300); goto menu7; }
+          if (back == LOW) { delay(300); goto menu8; }
           }
 
-
-menu9:  
+menu11:  
           settingPPM = preferences.getFloat("sPPMval", 0);  
           lcd.clear();
           while(1)
@@ -855,16 +909,16 @@ menu9:
             delay(300); 
                       
             preferences.putFloat("sPPMval", settingPPM);
-            goto menu7;
+            goto menu8;
             }
 
           
           if (up == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      ");  settingPPM = settingPPM+10.0; }
           if (down == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      "); settingPPM = settingPPM-10.0; }
-          if (back == LOW) { delay(300); goto menu7; }
+          if (back == LOW) { delay(300); goto menu8; }
           }
 
-menu10:  
+menu12:  
           settingDistance = preferences.getFloat("sDistanceVal", 0);  
           lcd.clear();
           while(1)
@@ -895,16 +949,16 @@ menu10:
             delay(300); 
                       
             preferences.putFloat("sDistanceVal", settingDistance);
-            goto menu7;
+            goto menu9;
             }
 
           
           if (up == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      ");  settingDistance = settingDistance + 0.1; }
           if (down == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      "); settingDistance = settingDistance - 0.1; }
-          if (back == LOW) { delay(300); goto menu7; }
+          if (back == LOW) { delay(300); goto menu9; }
           }
 
-menu11:  
+menu13:  
           settingTemp = settingTemp.getFloat("sTempVal", 0);  
           lcd.clear();
           while(1)
@@ -935,12 +989,12 @@ menu11:
             delay(300); 
                       
             preferences.putFloat("sDistanceVal", settingTemp);
-            goto menu7;
+            goto menu9;
             }
 
           
           if (up == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      ");  settingTemp = settingTemp + 1; }
           if (down == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      "); settingTemp = settingTemp - 1; }
-          if (back == LOW) { delay(300); goto menu7; }
+          if (back == LOW) { delay(300); goto menu9; }
           }
 }
