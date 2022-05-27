@@ -28,7 +28,7 @@ Preferences preferences;
 Ticker periodicTicker;
 
 ///////////////////////////////////////////////////// FIRST SETUP
-#define TOKEN "9NhrINrrAYd0Cmg1nT1l"
+#define TOKEN "komunitashidroponik1"
 
 //define relay pin
 // relay_1 = Nutrisi A
@@ -39,6 +39,9 @@ Ticker periodicTicker;
 #define relay_2 19 //12
 #define relay_3 23 //11
 #define relay_4 5  //10
+
+//Data sampling time
+int data_samping_rate = 5000;
 
 // Define distance sensor connnection
 int TRIGPIN = 4;  //A1       //34 //A3
@@ -137,18 +140,6 @@ void setup() {
   pinMode(pb_yellow,INPUT_PULLUP);
   pinMode(pb_red,INPUT_PULLUP); 
   
-  lcd.init();                      // initialize the lcd 
-  lcd.backlight(); 
-  delay(1000);
-  menu();
-//  preferences.end();
-  lcd.clear();
-
-  delay(1000);
-  lcd.setCursor(6,0);
-  lcd.print("Welcome"); 
-  delay(2000);
-
   neutralVoltage = preferences.getFloat("vPHneu", 0);
   acidVoltage = preferences.getFloat("vPHacid", 0); 
   k_factor = preferences.getFloat("kFact", 0);
@@ -161,7 +152,25 @@ void setup() {
   dht.begin();  
   //interupt
   // bisa ubah sampling time di sini
-  periodicTicker.attach_ms(5000, sendData_toServer);
+  lcd.init();                      // initialize the lcd 
+  lcd.backlight(); 
+  delay(1000);
+  menu();
+//  preferences.end();
+  lcd.clear();
+
+  delay(1000);
+  lcd.setCursor(2,0);
+  lcd.print("Selamat Datang!!");
+  lcd.setCursor(3,1);
+  lcd.print("Silahkan Setup "); 
+  lcd.setCursor(2,2);
+  lcd.print("SSID Wifi Anda:"); 
+  lcd.setCursor(4,3);
+  lcd.print("Binus ASO IoT"); 
+  delay(1000);
+  
+  periodicTicker.attach_ms(data_samping_rate, sendData_toServer);
 }
 ///////////////////////////////////////////////////////// LOOP ///////////////////////////////////////
 void loop() {
@@ -310,9 +319,9 @@ void getNprintData(){
     phVal = slope*(voltagePH-1.5)/3.0+intercept;  //y = k*x + b
     
     // DHT sensor read
-    float t = dht.readHumidity();
-    float h = dht.readTemperature();
-
+    float h = dht.readHumidity();
+    float t = dht.readTemperature();
+    lcd.clear();
     lcd.setCursor(11,0);
     lcd.print("    ");
     lcd.setCursor(11,1);
@@ -325,19 +334,25 @@ void getNprintData(){
     lcd.print("         ");
     
     lcd.setCursor(0,0);
-    lcd.print("PPM       : "); 
-    lcd.print(tdsValue,1);
+    lcd.print("PPM:"); 
+    lcd.print(tdsValue);
     
     lcd.setCursor(0,1);
-    lcd.print("Temp(degC): "); 
+    lcd.print("T1:"); 
     lcd.print(temperature);
+    lcd.setCursor(8,1);
+    lcd.print("  T2:"); 
+    lcd.print(t);
   
     lcd.setCursor(0,2);
-    lcd.print("PH        : "); 
-    lcd.print(phVal,1);
+    lcd.print("PH:"); 
+    lcd.print(phVal);
+    lcd.setCursor(9,2);
+    lcd.print("Hum: "); 
+    lcd.print(h);
   
     lcd.setCursor(0,3);
-    lcd.print("Jarak Air(cm): "); 
+    lcd.print("Jarak(cm): "); 
     float newDistance = distance/100;
     lcd.print(newDistance,1);
 }
@@ -449,14 +464,14 @@ void InitWiFi() {
   Serial.println("Connecting to AP ...");
   // attemperaturet to connect to WiFi network
 
-  res = wm.autoConnect("ESPWiFiManager");
+  res = wm.autoConnect("Binus ASO IoT");
   while (!res) {
     delay(500);
     Serial.print(".");
   }
   Serial.println("Connected to AP");
-  lcd.setCursor(19,0);
-  lcd.print("1");
+   //lcd.setCursor(18,0);
+   //lcd.print("ON");
   
 }
 
@@ -473,16 +488,16 @@ void reconnect() {
         client.subscribe("v1/devices/me/rpc/request/+");
         // Sending current GPIO status
         Serial.println("Sending current GPIO status ...");
-        lcd.setCursor(19,0);
-        lcd.print("1");
+        //lcd.setCursor(19,0);
+        //lcd.print("1");
       } else {
         getNprintData();
         Serial.print( "[FAILED] [ rc = " );
         Serial.print( client.state() );
         Serial.println( " : retrying in 5 seconds]" );
         // Wait 5 seconds before retrying
-        lcd.setCursor(19,0);
-        lcd.print("0");
+        lcd.setCursor(13,0);
+        lcd.print("OFFLINE");
       }
    }
 }
@@ -496,14 +511,13 @@ menu:
           {
 
           lcd.setCursor(0,0);
-          lcd.print("      Main Menu");
-          
+          lcd.print("1. Calibration");          
           lcd.setCursor(0,1);
-          lcd.print("1. Calibration");
+          lcd.print("2. Start Online");
           lcd.setCursor(0,2);
-          lcd.print("2. Start");
+          lcd.print("3. Set Parameter");
           lcd.setCursor(0,3);
-          lcd.print("3. Set Val");
+          lcd.print("4. Start Offline");
           delay(100);
           
           ok = digitalRead(pb_red);
@@ -514,10 +528,14 @@ menu:
           if (ok == LOW) { delay(300); goto menu1; }
           if (up == LOW) { delay(300); return; }
           if (down == LOW) { delay(300); goto menu7;  }
-          if (back == LOW) {  }
+          if (back == LOW) { delay(300); goto menuOffline;  }
           }   
-
-
+          
+menuOffline:
+  while(1){
+    getNprintData();
+  }
+  
 menu1:
           lcd.clear();
           while(1)
