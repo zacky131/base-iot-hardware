@@ -15,7 +15,9 @@ Preferences preferences;
 #include <LiquidCrystal_I2C.h>
 
 //DHT room Temp and Humi sensor
+#include <Adafruit_Sensor.h>
 #include <DHT.h>
+#include <DHT_U.h>
 
 //DFRobot Library
 #include "GravityTDS.h"
@@ -41,22 +43,25 @@ Ticker periodicTicker;
 #define relay_4 5  //10
 
 // Define distance sensor connnection
-#define TRIGPIN 4  //A1       //34 //A3
-#define ECHOPIN 35 //A2
+int TRIGPIN = 4;  //A1       //34 //A3
+int ECHOPIN = 35; //A2
 
 // Define connection for DFRobot Sensor
 #define ONE_WIRE_BUS 14 //7 
 
 // Define DHT sensor connection
-#define DHTPIN 34 //A3
-#define DHTTYPE DHT22   // DHT 22  (AM2302)
-DHT dht(DHTPIN, DHTTYPE);
+#define DHTPIN 4 //4
+#define DHTTYPE DHT21   // DHT 21  (AM2302)
+DHT dht(DHTPIN, DHTTYPE);   //Initialize DHT sensor for normal 16mhz Arduino
+//Variables
+float hum;  //Stores humidity value
+float temp; //Stores temperature value
 
 // Push button
 #define pb_red 13 // Red 9 
-#define pb_yellow 12 // Yellow 8 
-#define pb_blue 27 // black 6 
-#define pb_green 16 // green 5
+#define pb_green 12 // Yellow 8 
+#define pb_yellow 27 // green 6 
+#define pb_black 16 // black 5
 
 #define TdsSensorPin 39 //A5
 #define PH_PIN 36 //A4
@@ -94,7 +99,7 @@ float slope, intercept, t, h;
   //Starting Distance Val for setting
   float settingDistance = 5.0;
   //Starting Temperature Val for setting
-  int settingTemp = 25;
+  float settingTemp = 25.0;
     
 char thingsboardServer[] = "178.128.20.61";
 WiFiClient wifi;
@@ -136,8 +141,8 @@ void setup() {
   digitalWrite(relay_4, HIGH);
 
     // LCD Display
+  pinMode(pb_black,INPUT_PULLUP);
   pinMode(pb_green,INPUT_PULLUP);
-  pinMode(pb_blue,INPUT_PULLUP);
   pinMode(pb_yellow,INPUT_PULLUP);
   pinMode(pb_red,INPUT_PULLUP); 
   
@@ -162,8 +167,7 @@ void setup() {
   client.setServer( thingsboardServer, 1883 );
   client.setCallback(on_message);
 
-  dht.begin();
-  
+  dht.begin();  
   //interupt
   // bisa ubah sampling time di sini
   periodicTicker.attach_ms(5000, sendData_toServer);
@@ -315,11 +319,8 @@ void getNprintData(){
     phVal = slope*(voltagePH-1.5)/3.0+intercept;  //y = k*x + b
     
     // DHT sensor read
-    t = dht.readTemperature();
-    h = dht.readHumidity();
-
-
-    
+    float t = dht.readHumidity();
+    float h = dht.readTemperature();
 
     lcd.setCursor(11,0);
     lcd.print("    ");
@@ -345,8 +346,9 @@ void getNprintData(){
     lcd.print(phVal,1);
   
     lcd.setCursor(0,3);
-    lcd.print("Jarak  Air: "); 
-    lcd.print(distance);
+    lcd.print("Jarak Air(cm): "); 
+    float newDistance = distance/100;
+    lcd.print(newDistance,1);
 }
 
 void sendData_toServer(){
@@ -363,7 +365,8 @@ void sendData_toServer(){
     packet.concat(phVal);
   
     packet.concat((",\"Distance\":"));
-    packet.concat(distance);
+    float newDistance = distance/100;
+    packet.concat(newDistance);
   
     packet.concat((",\"Room Temperature\":"));
     packet.concat(t);
@@ -506,13 +509,14 @@ menu:
           lcd.setCursor(0,2);
           lcd.print("2. Start");
           lcd.setCursor(0,3);
-          lcd.print("3. Sett PH|PPM Val");
+          lcd.print("3. Set Val");
           delay(100);
           
-          ok = digitalRead(pb_green);
-          up = digitalRead(pb_blue);
+          ok = digitalRead(pb_red);
+          up = digitalRead(pb_green);
           down = digitalRead(pb_yellow);
-          back = digitalRead(pb_red);
+          back = digitalRead(pb_black);
+          
           if (ok == LOW) { delay(300); goto menu1; }
           if (up == LOW) { delay(300); return; }
           if (down == LOW) { delay(300); goto menu7;  }
@@ -536,10 +540,11 @@ menu1:
           
           delay(100);
           
-          ok = digitalRead(pb_green); // merah
-          up = digitalRead(pb_blue);
+          ok = digitalRead(pb_red);
+          up = digitalRead(pb_green);
           down = digitalRead(pb_yellow);
-          back = digitalRead(pb_red);
+          back = digitalRead(pb_black);
+          
           if (ok == LOW) { delay(300); goto menu2; }
           if (up == LOW) { delay(300); goto menu4; }
           if (down == LOW) {  }
@@ -571,10 +576,11 @@ menu2:
           
           delay(100);
           
-          ok = digitalRead(pb_green); //merah
-          up = digitalRead(pb_blue); //putih
-          down = digitalRead(pb_yellow); // kuning
-          back = digitalRead(pb_red); // hitam
+          ok = digitalRead(pb_red);
+          up = digitalRead(pb_green);
+          down = digitalRead(pb_yellow);
+          back = digitalRead(pb_black);
+          
           if (ok == LOW) { delay(300); goto menu3; }
           if (up == LOW) {  }
           if (down == LOW) {  }
@@ -605,10 +611,10 @@ menu3:
           lcd.print("4. Back");
           delay(100);
           
-          ok = digitalRead(pb_green);
-          up = digitalRead(pb_blue);
+          ok = digitalRead(pb_red);
+          up = digitalRead(pb_green);
           down = digitalRead(pb_yellow);
-          back = digitalRead(pb_red);
+          back = digitalRead(pb_black);
           if (ok == LOW) { 
             delay(300); 
             preferences.putFloat("vPHneu", voltagePH);
@@ -652,10 +658,10 @@ menu4:
           
           delay(100);
           
-          ok = digitalRead(pb_green);
-          up = digitalRead(pb_blue);
+          ok = digitalRead(pb_red);
+          up = digitalRead(pb_green);
           down = digitalRead(pb_yellow);
-          back = digitalRead(pb_red);
+          back = digitalRead(pb_black);
           if (ok == LOW) { delay(300); goto menu5; }
           if (up == LOW) {  }
           if (down == LOW) {  }
@@ -688,10 +694,10 @@ menu5:
           lcd.print("4. Back");
           delay(100);
           
-          ok = digitalRead(pb_green);
-          up = digitalRead(pb_blue);
+          ok = digitalRead(pb_red);
+          up = digitalRead(pb_green);
           down = digitalRead(pb_yellow);
-          back = digitalRead(pb_red);
+          back = digitalRead(pb_black);
           if (ok == LOW) { 
             delay(300); 
            
@@ -735,10 +741,10 @@ menu6:
           lcd.print("4. Back");
           delay(100);
           
-          ok = digitalRead(pb_green);
-          up = digitalRead(pb_blue);
+          ok = digitalRead(pb_red);
+          up = digitalRead(pb_green);
           down = digitalRead(pb_yellow);
-          back = digitalRead(pb_red);
+          back = digitalRead(pb_black);
           if (ok == LOW) { 
             delay(200); 
 
@@ -761,17 +767,18 @@ menu7:
           lcd.print("1.PH|PPM Set");
           
           lcd.setCursor(0,1);
-          lcd.print("2.Distance|Temp Set");
+          lcd.print("2.Jarak|Temp Set");
           
           lcd.setCursor(0,3);
           lcd.print("4.Back");
           
           delay(100);
           
-          ok = digitalRead(pb_green); // merah
-          up = digitalRead(pb_blue);
+          ok = digitalRead(pb_red);
+          up = digitalRead(pb_green);
           down = digitalRead(pb_yellow);
-          back = digitalRead(pb_red);
+          back = digitalRead(pb_black);
+          
           if (ok == LOW) { delay(300); goto menu8; }
           if (up == LOW) { delay(300); goto menu9; }
           if (down == LOW) {  }
@@ -788,19 +795,17 @@ menu8:
           
           lcd.setCursor(0,1);
           lcd.print("2.PPM Set");
-
-          lcd.setCursor(0,10);
-          lcd.print("3.Distance Set");
           
           lcd.setCursor(0,3);
           lcd.print("4. Back");
           
           delay(100);
           
-          ok = digitalRead(pb_green); // merah
-          up = digitalRead(pb_blue);
+          ok = digitalRead(pb_red);
+          up = digitalRead(pb_green);
           down = digitalRead(pb_yellow);
-          back = digitalRead(pb_red);
+          back = digitalRead(pb_black);
+          
           if (ok == LOW) { delay(300); goto menu10; }
           if (up == LOW) { delay(300); goto menu11; }
           if (down == LOW) {  }
@@ -813,7 +818,7 @@ menu9:
           {
           
           lcd.setCursor(0,0);
-          lcd.print("1.Distance Set");
+          lcd.print("1.Jarak Set");
           
           lcd.setCursor(0,1);
           lcd.print("2.Temperature Set");
@@ -822,11 +827,12 @@ menu9:
           lcd.print("4. Back");
           
           delay(100);
-          
-          ok = digitalRead(pb_green); // merah
-          up = digitalRead(pb_blue);
+
+          ok = digitalRead(pb_red);
+          up = digitalRead(pb_green);
           down = digitalRead(pb_yellow);
-          back = digitalRead(pb_red);
+          back = digitalRead(pb_black);
+          
           if (ok == LOW) { delay(300); goto menu12; }
           if (up == LOW) { delay(300); goto menu13; }
           if (down == LOW) {  }
@@ -858,10 +864,11 @@ menu10:
           lcd.print("4. Back");
           delay(100);
           
-          ok = digitalRead(pb_green);
-          up = digitalRead(pb_blue);
-          down = digitalRead(pb_yellow);
-          back = digitalRead(pb_red);
+          ok = digitalRead(pb_red);
+          up = digitalRead(pb_yellow);
+          down = digitalRead(pb_green);
+          back = digitalRead(pb_black);
+          
           if (ok == LOW) { 
             delay(300); 
                       
@@ -901,10 +908,11 @@ menu11:
           lcd.print("4. Back");
           delay(100);
           
-          ok = digitalRead(pb_green);
-          up = digitalRead(pb_blue);
+          ok = digitalRead(pb_red);
+          up = digitalRead(pb_green);
           down = digitalRead(pb_yellow);
-          back = digitalRead(pb_red);
+          back = digitalRead(pb_black);
+          
           if (ok == LOW) { 
             delay(300); 
                       
@@ -924,7 +932,7 @@ menu12:
           while(1)
           {       
           lcd.setCursor(0,0);
-          lcd.print("Distance   : ");
+          lcd.print("Jarak (cm): ");
           lcd.print(settingDistance,1);
           
           lcd.setCursor(0,2);
@@ -941,10 +949,11 @@ menu12:
           lcd.print("4. Back");
           delay(100);
           
-          ok = digitalRead(pb_green);
-          up = digitalRead(pb_blue);
+          ok = digitalRead(pb_red);
+          up = digitalRead(pb_green);
           down = digitalRead(pb_yellow);
-          back = digitalRead(pb_red);
+          back = digitalRead(pb_black);
+          
           if (ok == LOW) { 
             delay(300); 
                       
@@ -953,19 +962,19 @@ menu12:
             }
 
           
-          if (up == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      ");  settingDistance = settingDistance + 0.1; }
-          if (down == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      "); settingDistance = settingDistance - 0.1; }
+          if (up == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      ");  settingDistance = settingDistance + 0.5; }
+          if (down == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      "); settingDistance = settingDistance - 0.5; }
           if (back == LOW) { delay(300); goto menu9; }
           }
 
 menu13:  
-          settingTemp = settingTemp.getFloat("sTempVal", 0);  
+          settingTemp = preferences.getFloat("sTempVal", 0);  
           lcd.clear();
           while(1)
-          {         
+          {       
           lcd.setCursor(0,0);
-          lcd.print("Temperature: ");
-          lcd.print(settingTemp);
+          lcd.print("Temperature(C): ");
+          lcd.print(settingTemp,1);
           
           lcd.setCursor(0,2);
           lcd.print("1. Set");
@@ -981,20 +990,21 @@ menu13:
           lcd.print("4. Back");
           delay(100);
           
-          ok = digitalRead(pb_green);
-          up = digitalRead(pb_blue);
+          ok = digitalRead(pb_red);
+          up = digitalRead(pb_green);
           down = digitalRead(pb_yellow);
-          back = digitalRead(pb_red);
+          back = digitalRead(pb_black);
+          
           if (ok == LOW) { 
             delay(300); 
                       
-            preferences.putFloat("sDistanceVal", settingTemp);
+            preferences.putFloat("sTempVal", settingTemp);
             goto menu9;
             }
 
           
-          if (up == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      ");  settingTemp = settingTemp + 1; }
-          if (down == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      "); settingTemp = settingTemp - 1; }
+          if (up == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      ");  settingTemp = settingTemp + 0.5; }
+          if (down == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      "); settingTemp = settingTemp - 0.5; }
           if (back == LOW) { delay(300); goto menu9; }
           }
 }
