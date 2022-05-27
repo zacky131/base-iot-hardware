@@ -15,9 +15,7 @@ Preferences preferences;
 #include <LiquidCrystal_I2C.h>
 
 //DHT room Temp and Humi sensor
-#include <Adafruit_Sensor.h>
 #include <DHT.h>
-#include <DHT_U.h>
 
 //DFRobot Library
 #include "GravityTDS.h"
@@ -50,13 +48,9 @@ int ECHOPIN = 35; //A2
 #define ONE_WIRE_BUS 14 //7 
 
 // Define DHT sensor connection
-#define DHTPIN 4 //4
+#define DHTPIN 17 //4
 #define DHTTYPE DHT21   // DHT 21  (AM2302)
 DHT dht(DHTPIN, DHTTYPE);   //Initialize DHT sensor for normal 16mhz Arduino
-//Variables
-float hum;  //Stores humidity value
-float temp; //Stores temperature value
-
 // Push button
 #define pb_red 13 // Red 9 
 #define pb_green 12 // Yellow 8 
@@ -70,8 +64,6 @@ float temp; //Stores temperature value
 // SCLPIN = 26; //3
 
 LiquidCrystal_I2C lcd(0x27,20,4);  // set the LCD address to 0x27 (SDA and SCL pin) for a 16 chars and 2 line display
-
-#define WiFi_LED_ON  2//A1
 
 int ok = 0;
 int up = 0;
@@ -133,7 +125,6 @@ void setup() {
   pinMode(relay_4, OUTPUT);
   pinMode(ECHOPIN, INPUT);
   pinMode(TRIGPIN, OUTPUT);
-  pinMode(WiFi_LED_ON, OUTPUT);
 
   digitalWrite(relay_1, HIGH);
   digitalWrite(relay_2, HIGH);
@@ -464,7 +455,8 @@ void InitWiFi() {
     Serial.print(".");
   }
   Serial.println("Connected to AP");
-  digitalWrite(WiFi_LED_ON, HIGH);
+  lcd.setCursor(19,0);
+  lcd.print("1");
   
 }
 
@@ -481,14 +473,16 @@ void reconnect() {
         client.subscribe("v1/devices/me/rpc/request/+");
         // Sending current GPIO status
         Serial.println("Sending current GPIO status ...");
-        digitalWrite(WiFi_LED_ON, HIGH);
+        lcd.setCursor(19,0);
+        lcd.print("1");
       } else {
         getNprintData();
         Serial.print( "[FAILED] [ rc = " );
         Serial.print( client.state() );
         Serial.println( " : retrying in 5 seconds]" );
         // Wait 5 seconds before retrying
-        digitalWrite(WiFi_LED_ON, LOW);
+        lcd.setCursor(19,0);
+        lcd.print("0");
       }
    }
 }
