@@ -173,58 +173,75 @@ void setup() {
   periodicTicker.attach_ms(data_samping_rate, sendData_toServer);
 }
 ///////////////////////////////////////////////////////// LOOP ///////////////////////////////////////
+
 void loop() {
   if (!client.connected()) {
     reconnect();
   }
-    getNprintData();
-    client.loop();
+  getNprintData();
+  client.loop();
+
   
 }
 
-//initial values 0
+// automatic/manual switch
+void auto_control() {
+  settingDistance = preferences.getFloat("sDistanceVal", 0);
+  settingPPM = preferences.getFloat("sPPMval", 0);
+  
+  MA_distance(); // get average distance
+  relaycontrol(); // control relay automatically
+}
+
+void manual_control() {
+  //new menu
+}
+
+// nutrition a to nutrition b ratio. default is 1
+float a_b_ratio = 1;
+
+// initial values 0
 float distance_min_5 = 0;
 float distance_min_4 = 0;
 float distance_min_3 = 0;
 float distance_min_2 = 0;
 float distance_min_1 = 0;
+//distance calculation by MA5
 float avg_distance = 0;
 
 // hapus distance kalo sus, rata rata kalo aman
-void MA_distance(float new_distance){ // data baru setiap 5 detik
-  if (new_distance < 2.5*avg_distance){ //kalo kejauhan diskip aja
-    avg_distance = (distance_min_5 + distance_min_4 + distance_min_3 + distance_min_2 + distance_min_1 + new_distance)/6;
+void MA_distance(){
+  if (distance < 2.5*avg_distance){ //kalo kejauhan diskip aja
+    avg_distance = (distance_min_5 + distance_min_4 + distance_min_3 + distance_min_2 + distance_min_1 + distance)/6;
     distance_min_5 = distance_min_4;
     distance_min_4 = distance_min_3;
     distance_min_3 = distance_min_2;
     distance_min_2 = distance_min_1;
-    distance_min_1 = new_distance;
+    distance_min_1 = distance;
   }
 }
-
-// automatic/manual switch belom
 
 
 // relay_1 = Nutrisi A
 // relay_2 = Nutrisi B
 // relay_3 = Air
 // relay_4 = ??
-void relaycontrol(float avg_distance, int measured_ppm, int ppm_setting, float a_b_ratio){
-  // jadiin parameter fungsi
-  // int ppm_setting = 1200; //misal
-  int max_ppm_setting = ppm_setting + 100;
-  int min_ppm_setting = ppm_setting - 200; //1000
+void relaycontrol(){
+  // int settingPPM = 1200; //misal
+  int max_settingPPM = settingPPM + 100;
+  int min_settingPPM = settingPPM - 200; //1000
   int time = 5000; //in miliseconds
   // rata-rata distance (moving average)
   // float a_b_ratio = nutrisi_a / nutrisi_b
-  int max_distance = 40; //airnya tinggal dikit
-  int min_distance = 20; //airnya udah penuh
+  
+  settingDistance = preferences.getFloat("sDistanceVal", 0); //air max
+  int max_distance = 40; //airnya mau habis
 
-  if ((avg_distance > max_distance) || (measured_ppm < min_ppm_setting)){
+  if ((avg_distance > max_distance) || (tdsValue < min_settingPPM)){
     // avg_distance ngelewatin batas max_distance, atau ppm ngelewatin batas minimal
-    while (avg_distance > min_distance){
+    while (avg_distance > settingDistance){
       // selama masih belom sampe batas 20 cm
-      while (measured_ppm < max_ppm_setting){
+      while (tdsValue < max_settingPPM){
         // selama masih belom sampe ppm 1300
         // cek perlu lebih banyak nutrisi A ato B
         if (a_b_ratio < 1){
@@ -238,6 +255,7 @@ void relaycontrol(float avg_distance, int measured_ppm, int ppm_setting, float a
           delay(time - floor(time*a_b_ratio));
           // set_gpio_status(relay_2, 0); //b
         }
+
         else if (a_b_ratio > 1){
           // a>b, nyalain a lebih lama
           set_gpio_status(relay_1, 1); //Nutrisi A
@@ -249,6 +267,7 @@ void relaycontrol(float avg_distance, int measured_ppm, int ppm_setting, float a
           delay(time - floor(time/a_b_ratio));
           // set_gpio_status(relay_1, 0); //a
         }
+
         else{
           // a=b, nyalain bareng
           set_gpio_status(relay_1, 1); //Nutrisi A
@@ -301,7 +320,7 @@ void getNprintData(){
     
     //Getting data from sensor and send data to thingsboard
     sensors.requestTemperaturesByIndex(0);
-    temperature = sensors.getTempCByIndex(0);     //get temperatureerature value from sensor
+    temperature = sensors.getTempCByIndex(0);     //get temperature value from sensor
 
     //Getting PPM Value from TDS sensor
     analogValue = analogRead(TdsSensorPin);
@@ -939,7 +958,7 @@ menu11:
           }
 
 menu12:  
-          settingDistance = preferences.getFloat("sDistanceVal", 0);  
+          settingDistance = preferences.getFloat("sDistanceVal", 0);
           lcd.clear();
           while(1)
           {       
