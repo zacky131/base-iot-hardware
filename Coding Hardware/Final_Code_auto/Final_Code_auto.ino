@@ -190,7 +190,7 @@ void auto_control() {
   settingPPM = preferences.getFloat("sPPMval", 0);
   
   MA_distance(); // get average distance
-  relaycontrol(); // control relay automatically
+  auto_relay_control(); // control relay automatically
 }
 
 void manual_control() {
@@ -235,7 +235,7 @@ void MA_distance(){
 // relay_2 = Nutrisi B
 // relay_3 = Air
 // relay_4 = ??
-void relaycontrol(){
+void auto_relay_control(){
   // int settingPPM = 1200; //misal
   int max_settingPPM = settingPPM + 100;
   int min_settingPPM = settingPPM - 200; //1000
@@ -244,12 +244,12 @@ void relaycontrol(){
   // float a_b_ratio = nutrisi_a / nutrisi_b
   
   settingDistance = preferences.getFloat("sDistanceVal", 0); //air max
-  int max_distance = 40; //airnya mau habis
+  int max_distance = 3*settingDistance; //airnya mau habis
 
   if ((avg_distance > max_distance) || (tdsValue < min_settingPPM)){
     // avg_distance ngelewatin batas max_distance, atau ppm ngelewatin batas minimal
     while (avg_distance > settingDistance){
-      // selama masih belom sampe batas 20 cm
+      // selama masih belom sampe batas
       while (tdsValue < max_settingPPM){
         // selama masih belom sampe ppm 1300
         // cek perlu lebih banyak nutrisi A ato B
@@ -295,8 +295,7 @@ void relaycontrol(){
   set_gpio_status(relay_2, 0);
   set_gpio_status(relay_3, 0);
   // set_gpio_status(relay_4, 0);
-  delay(5
-  00);
+  delay(500);
 }
 
 
