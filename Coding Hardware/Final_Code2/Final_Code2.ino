@@ -319,8 +319,8 @@ void getNprintData(){
     phVal = slope*(voltagePH-1.5)/3.0+intercept;  //y = k*x + b
     
     // DHT sensor read
-    float h = dht.readHumidity();
-    float t = dht.readTemperature();
+    float t = dht.readHumidity();
+    float h = dht.readTemperature();
     lcd.clear();
     lcd.setCursor(11,0);
     lcd.print("    ");
