@@ -197,6 +197,15 @@ void manual_control() {
   //new menu
 }
 
+void refill_nutrition() {
+  set_gpio_status(relay_1, 1); //Nutrisi A
+  set_gpio_status(relay_2, 1); //Nutrisi B
+}
+
+void refill_water() {
+  set_gpio_status(relay_3, 1); //air
+}
+
 // nutrition a to nutrition b ratio. default is 1
 float a_b_ratio = 1;
 
@@ -286,7 +295,8 @@ void relaycontrol(){
   set_gpio_status(relay_2, 0);
   set_gpio_status(relay_3, 0);
   // set_gpio_status(relay_4, 0);
-  delay(500);
+  delay(5
+  00);
 }
 
 
