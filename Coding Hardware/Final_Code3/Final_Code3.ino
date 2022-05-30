@@ -28,7 +28,7 @@ Preferences preferences;
 Ticker periodicTicker;
 
 ///////////////////////////////////////////////////// FIRST SETUP
-#define TOKEN "komunitashidroponik1"
+#define TOKEN "9NhrINrrAYd0Cmg1nT1l"
 
 //define relay pin
 // relay_1 = Nutrisi A
@@ -40,9 +40,6 @@ Ticker periodicTicker;
 #define relay_3 23 //11
 #define relay_4 5  //10
 
-//Data sampling time
-int data_samping_rate = 5000;
-
 // Define distance sensor connnection
 int TRIGPIN = 4;  //A1       //34 //A3
 int ECHOPIN = 35; //A2
@@ -51,13 +48,13 @@ int ECHOPIN = 35; //A2
 #define ONE_WIRE_BUS 14 //7 
 
 // Define DHT sensor connection
-#define DHTPIN 17 //4
+int DHTPIN = 17; //4
 #define DHTTYPE DHT21   // DHT 21  (AM2302)
 DHT dht(DHTPIN, DHTTYPE);   //Initialize DHT sensor for normal 16mhz Arduino
 // Push button
 #define pb_red 13 // Red 9 
-#define pb_green 12 // Yellow 8 
-#define pb_yellow 27 // green 6 
+#define pb_yellow 12 // Yellow 8 
+#define pb_green 27 // green 6 
 #define pb_black 16 // black 5
 
 #define TdsSensorPin 39 //A5
@@ -111,6 +108,7 @@ DFRobot_PH ph;
 ///////////////////////////////////////////////////////// SETUP ///////////////////////////////////////
 void setup() {
   Serial.begin(115200);
+  dht.begin();  
   
   //Init EEPROM
   preferences.begin("my-app", false);
@@ -118,7 +116,7 @@ void setup() {
   sensors.begin();
   gravityTds.setPin(TdsSensorPin);
   gravityTds.setAref(5.0);  //reference voltage on ADC, default 5.0V on Arduino UNO
-  gravityTds.setAdcRange(4096);  //1024 for 10bit ADC;4096 for 12bit ADC
+  gravityTds.setAdcRange(4096);  //1024   for 10bit ADC;4096 for 12bit ADC
   gravityTds.begin();  //initialization
   
   // Set output mode for all GPIO pins
@@ -140,6 +138,18 @@ void setup() {
   pinMode(pb_yellow,INPUT_PULLUP);
   pinMode(pb_red,INPUT_PULLUP); 
   
+  lcd.init();                      // initialize the lcd 
+  lcd.backlight(); 
+  delay(1000);
+  menu();
+//  preferences.end();
+  lcd.clear();
+
+  delay(1000);
+  lcd.setCursor(6,0);
+  lcd.print("Welcome"); 
+  delay(2000);
+
   neutralVoltage = preferences.getFloat("vPHneu", 0);
   acidVoltage = preferences.getFloat("vPHacid", 0); 
   k_factor = preferences.getFloat("kFact", 0);
@@ -149,28 +159,9 @@ void setup() {
   client.setServer( thingsboardServer, 1883 );
   client.setCallback(on_message);
 
-  dht.begin();  
   //interupt
   // bisa ubah sampling time di sini
-  lcd.init();                      // initialize the lcd 
-  lcd.backlight(); 
-  delay(1000);
-  menu();
-//  preferences.end();
-  lcd.clear();
-
-  delay(1000);
-  lcd.setCursor(2,0);
-  lcd.print("Selamat Datang!!");
-  lcd.setCursor(3,1);
-  lcd.print("Silahkan Setup "); 
-  lcd.setCursor(2,2);
-  lcd.print("SSID Wifi Anda:"); 
-  lcd.setCursor(4,3);
-  lcd.print("Binus ASO IoT"); 
-  delay(1000);
-  
-  periodicTicker.attach_ms(data_samping_rate, sendData_toServer);
+  periodicTicker.attach_ms(5000, sendData_toServer);
 }
 ///////////////////////////////////////////////////////// LOOP ///////////////////////////////////////
 void loop() {
@@ -319,8 +310,8 @@ void getNprintData(){
     phVal = slope*(voltagePH-1.5)/3.0+intercept;  //y = k*x + b
     
     // DHT sensor read
-    float t = dht.readHumidity();
-    float h = dht.readTemperature();
+    float h = dht.readHumidity();
+    float t = dht.readTemperature();
     lcd.clear();
     lcd.setCursor(11,0);
     lcd.print("    ");
@@ -464,14 +455,14 @@ void InitWiFi() {
   Serial.println("Connecting to AP ...");
   // attemperaturet to connect to WiFi network
 
-  res = wm.autoConnect("Binus ASO IoT");
+  res = wm.autoConnect("ESPWiFiManager");
   while (!res) {
     delay(500);
     Serial.print(".");
   }
   Serial.println("Connected to AP");
-   //lcd.setCursor(18,0);
-   //lcd.print("ON");
+  lcd.setCursor(19,0);
+  lcd.print("1");
   
 }
 
@@ -488,16 +479,16 @@ void reconnect() {
         client.subscribe("v1/devices/me/rpc/request/+");
         // Sending current GPIO status
         Serial.println("Sending current GPIO status ...");
-        //lcd.setCursor(19,0);
-        //lcd.print("1");
+        lcd.setCursor(19,0);
+        lcd.print("1");
       } else {
         getNprintData();
         Serial.print( "[FAILED] [ rc = " );
         Serial.print( client.state() );
         Serial.println( " : retrying in 5 seconds]" );
         // Wait 5 seconds before retrying
-        lcd.setCursor(13,0);
-        lcd.print("OFFLINE");
+        lcd.setCursor(19,0);
+        lcd.print("0");
       }
    }
 }
@@ -521,9 +512,10 @@ menu:
           delay(100);
           
           ok = digitalRead(pb_red);
-          up = digitalRead(pb_green);
-          down = digitalRead(pb_yellow);
+          up = digitalRead(pb_yellow);
+          down = digitalRead(pb_green);
           back = digitalRead(pb_black);
+          
           
           if (ok == LOW) { delay(300); goto menu1; }
           if (up == LOW) { delay(300); return; }
@@ -534,8 +526,9 @@ menu:
 menuOffline:
   while(1){
     getNprintData();
+    delay(500);
   }
-  
+
 menu1:
           lcd.clear();
           while(1)
@@ -553,9 +546,10 @@ menu1:
           delay(100);
           
           ok = digitalRead(pb_red);
-          up = digitalRead(pb_green);
-          down = digitalRead(pb_yellow);
+          up = digitalRead(pb_yellow);
+          down = digitalRead(pb_green);
           back = digitalRead(pb_black);
+          
           
           if (ok == LOW) { delay(300); goto menu2; }
           if (up == LOW) { delay(300); goto menu4; }
@@ -589,9 +583,10 @@ menu2:
           delay(100);
           
           ok = digitalRead(pb_red);
-          up = digitalRead(pb_green);
-          down = digitalRead(pb_yellow);
+          up = digitalRead(pb_yellow);
+          down = digitalRead(pb_green);
           back = digitalRead(pb_black);
+          
           
           if (ok == LOW) { delay(300); goto menu3; }
           if (up == LOW) {  }
@@ -624,9 +619,10 @@ menu3:
           delay(100);
           
           ok = digitalRead(pb_red);
-          up = digitalRead(pb_green);
-          down = digitalRead(pb_yellow);
+          up = digitalRead(pb_yellow);
+          down = digitalRead(pb_green);
           back = digitalRead(pb_black);
+          
           if (ok == LOW) { 
             delay(300); 
             preferences.putFloat("vPHneu", voltagePH);
@@ -671,9 +667,10 @@ menu4:
           delay(100);
           
           ok = digitalRead(pb_red);
-          up = digitalRead(pb_green);
-          down = digitalRead(pb_yellow);
+          up = digitalRead(pb_yellow);
+          down = digitalRead(pb_green);
           back = digitalRead(pb_black);
+          
           if (ok == LOW) { delay(300); goto menu5; }
           if (up == LOW) {  }
           if (down == LOW) {  }
@@ -707,9 +704,10 @@ menu5:
           delay(100);
           
           ok = digitalRead(pb_red);
-          up = digitalRead(pb_green);
-          down = digitalRead(pb_yellow);
+          up = digitalRead(pb_yellow);
+          down = digitalRead(pb_green);
           back = digitalRead(pb_black);
+          
           if (ok == LOW) { 
             delay(300); 
            
@@ -754,9 +752,10 @@ menu6:
           delay(100);
           
           ok = digitalRead(pb_red);
-          up = digitalRead(pb_green);
-          down = digitalRead(pb_yellow);
+          up = digitalRead(pb_yellow);
+          down = digitalRead(pb_green);
           back = digitalRead(pb_black);
+          
           if (ok == LOW) { 
             delay(200); 
 
@@ -787,9 +786,10 @@ menu7:
           delay(100);
           
           ok = digitalRead(pb_red);
-          up = digitalRead(pb_green);
-          down = digitalRead(pb_yellow);
+          up = digitalRead(pb_yellow);
+          down = digitalRead(pb_green);
           back = digitalRead(pb_black);
+          
           
           if (ok == LOW) { delay(300); goto menu8; }
           if (up == LOW) { delay(300); goto menu9; }
@@ -814,9 +814,10 @@ menu8:
           delay(100);
           
           ok = digitalRead(pb_red);
-          up = digitalRead(pb_green);
-          down = digitalRead(pb_yellow);
+          up = digitalRead(pb_yellow);
+          down = digitalRead(pb_green);
           back = digitalRead(pb_black);
+          
           
           if (ok == LOW) { delay(300); goto menu10; }
           if (up == LOW) { delay(300); goto menu11; }
@@ -841,9 +842,10 @@ menu9:
           delay(100);
 
           ok = digitalRead(pb_red);
-          up = digitalRead(pb_green);
-          down = digitalRead(pb_yellow);
+          up = digitalRead(pb_yellow);
+          down = digitalRead(pb_green);
           back = digitalRead(pb_black);
+          
           
           if (ok == LOW) { delay(300); goto menu12; }
           if (up == LOW) { delay(300); goto menu13; }
@@ -921,9 +923,10 @@ menu11:
           delay(100);
           
           ok = digitalRead(pb_red);
-          up = digitalRead(pb_green);
-          down = digitalRead(pb_yellow);
+          up = digitalRead(pb_yellow);
+          down = digitalRead(pb_green);
           back = digitalRead(pb_black);
+          
           
           if (ok == LOW) { 
             delay(300); 
@@ -962,8 +965,8 @@ menu12:
           delay(100);
           
           ok = digitalRead(pb_red);
-          up = digitalRead(pb_green);
-          down = digitalRead(pb_yellow);
+          up = digitalRead(pb_yellow);
+          down = digitalRead(pb_green);
           back = digitalRead(pb_black);
           
           if (ok == LOW) { 
@@ -1003,8 +1006,8 @@ menu13:
           delay(100);
           
           ok = digitalRead(pb_red);
-          up = digitalRead(pb_green);
-          down = digitalRead(pb_yellow);
+          up = digitalRead(pb_yellow);
+          down = digitalRead(pb_green);
           back = digitalRead(pb_black);
           
           if (ok == LOW) { 
@@ -1019,4 +1022,4 @@ menu13:
           if (down == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      "); settingTemp = settingTemp - 0.5; }
           if (back == LOW) { delay(300); goto menu9; }
           }
-} 
+}
