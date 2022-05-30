@@ -1,4 +1,4 @@
-///////////////////////////////////// LIBRARY
+  ///////////////////////////////////// LIBRARY
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
 
@@ -180,7 +180,7 @@ void loop() {
   }
   getNprintData();
   client.loop();
-
+  auto_control();
   
 }
 
@@ -230,7 +230,7 @@ void relaycontrol(){
   // int settingPPM = 1200; //misal
   int max_settingPPM = settingPPM + 100;
   int min_settingPPM = settingPPM - 200; //1000
-  int time = 5000; //in miliseconds
+  int waktu = 5000; //in miliseconds
   // rata-rata distance (moving average)
   // float a_b_ratio = nutrisi_a / nutrisi_b
   
@@ -249,10 +249,10 @@ void relaycontrol(){
           set_gpio_status(relay_1, 1); //Nutrisi A
           set_gpio_status(relay_2, 1); //Nutrisi B
 
-          delay(floor(time*a_b_ratio));
+          delay(floor(waktu*a_b_ratio));
           set_gpio_status(relay_1, 0);//a
 
-          delay(time - floor(time*a_b_ratio));
+          delay(waktu - floor(waktu*a_b_ratio));
           // set_gpio_status(relay_2, 0); //b
         }
 
@@ -261,15 +261,14 @@ void relaycontrol(){
           set_gpio_status(relay_1, 1); //Nutrisi A
           set_gpio_status(relay_2, 1); //Nutrisi B
 
-          delay(floor(time/a_b_ratio));
+          delay(floor(waktu/a_b_ratio));
           set_gpio_status(relay_2, 0); //b
 
-          delay(time - floor(time/a_b_ratio));
+          delay(waktu - floor(waktu/a_b_ratio));
           // set_gpio_status(relay_1, 0); //a
         }
 
-        else{
-          // a=b, nyalain bareng
+        else{ // a=b, nyalain bareng
           set_gpio_status(relay_1, 1); //Nutrisi A
           set_gpio_status(relay_2, 1); //Nutrisi B
         }
@@ -287,8 +286,7 @@ void relaycontrol(){
   set_gpio_status(relay_2, 0);
   set_gpio_status(relay_3, 0);
   // set_gpio_status(relay_4, 0);
-  
-// setiap 5 menit sekali?
+  delay(500);
 }
 
 
