@@ -19,10 +19,10 @@
 Ticker periodicTicker;
 
 ///////////////////////////////////////////////////// FIRST SETUP
-#define WIFI_AP "WIFIHYDRO"
-#define WIFI_PASSWORD "HYDRO15521"
+#define WIFI_AP "Chezmoi"
+#define WIFI_PASSWORD "kittygalore"
 
-#define TOKEN "K3ZLw3PpqpcbKodz2xhg"
+#define TOKEN "device1trainingtoken"
 
 
 //define relay pin
@@ -53,7 +53,7 @@ float duration, distance;
 // Variable for hydroponic sensor 
 float tdsValue, temperature, voltage, phVal;
 
-char thingsboardServer[] = "demo.thingsboard.io";
+char thingsboardServer[] = "178.128.20.61";
 WiFiClient wifiClient;
 PubSubClient client(wifiClient);
 int status = WL_IDLE_STATUS;
