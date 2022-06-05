@@ -192,10 +192,6 @@ void auto_control() {
   auto_relay_control(); // control relay automatically
 }
 
-void manual_control() {
-  //new menu
-}
-
 // nutrition a to nutrition b ratio. default is 1
 float a_b_ratio = 1;
 
@@ -564,14 +560,20 @@ menuOffline:
 menuManualControl:
   lcd.clear();
   while(1){
-
     //read and show ppm
+    analogValue = analogRead(TdsSensorPin);
+    voltage = analogValue/4096*5.0;
+    ecValue=(133.42*voltage*voltage*voltage - 255.86*voltage*voltage + 857.39*voltage)*k_factor;
+    ecValue25  =  ecValue / (1.0+0.02*(temperature-25.0));  //temperature compensation
+    tdsValue = ecValue25 * 0.5;
+    k = ecValue/(133.42*voltage*voltage*voltage - 255.86*voltage*voltage + 857.39*voltage);
     lcd.setCursor(0,0);
     lcd.print("PPM: ");
     lcd.setCursor(5,0);
     lcd.print(tdsValue,0);
 
     //read and show water distance
+    MA_distance();
     lcd.setCursor(12,0);
     lcd.print("Dis: ");
     lcd.setCursor(16,0);
