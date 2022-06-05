@@ -181,7 +181,6 @@ void loop() {
   getNprintData();
   client.loop();
   auto_control();
-  
 }
 
 // automatic/manual switch
@@ -195,15 +194,6 @@ void auto_control() {
 
 void manual_control() {
   //new menu
-}
-
-void refill_nutrition() {
-  set_gpio_status(relay_1, 1); //Nutrisi A
-  set_gpio_status(relay_2, 1); //Nutrisi B
-}
-
-void refill_water() {
-  set_gpio_status(relay_3, 1); //air
 }
 
 // nutrition a to nutrition b ratio. default is 1
@@ -560,8 +550,66 @@ menu:
 menuOffline:
   while(1){
     getNprintData();
+    ok = digitalRead(pb_red);
+    up = digitalRead(pb_green);
+    down = digitalRead(pb_yellow);
+    back = digitalRead(pb_black);
+    
+    if (ok == LOW) { delay(300); goto menuManualControl; }
+    if (up == LOW) { delay(300); goto menuManualControl; }
+    if (down == LOW) { delay(300); goto menuManualControl; }
+    if (back == LOW) { delay(300); goto menuManualControl; }
   }
-  
+
+menuManualControl:
+  lcd.clear();
+  while(1){
+
+    //read and show ppm
+    lcd.setCursor(0,0);
+    lcd.print("PPM: ");
+    lcd.setCursor(5,0);
+    lcd.print(tdsValue,0);
+
+    //read and show water distance
+    lcd.setCursor(12,0);
+    lcd.print("Dis: ");
+    lcd.setCursor(16,0);
+    lcd.print(avg_distance,0);
+
+    lcd.setCursor(0,1);
+    lcd.print("1. Add nutrition");
+    
+    lcd.setCursor(0,0);
+    lcd.print("2. Add water");
+    
+    lcd.setCursor(0,2);
+    lcd.print("4. Back");
+    
+    delay(100);
+    
+    ok = digitalRead(pb_red);
+    up = digitalRead(pb_green);
+    down = digitalRead(pb_yellow);
+    back = digitalRead(pb_black);
+
+    if (ok == LOW) { 
+      delay(100);
+      set_gpio_status(relay_1, 1); //a
+      set_gpio_status(relay_2, 1); //b
+    }
+    else {
+      set_gpio_status(relay_1, 0); //a
+      set_gpio_status(relay_2, 0); //b
+    }
+    if (up == LOW) {
+      set_gpio_status(relay_3, 1); //air 
+    }
+    else set_gpio_status(relay_3, 0); //air
+    if (down == LOW) {  }
+    if (back == LOW) { delay(300); goto menuOffline; }
+  }
+
 menu1:
           lcd.clear();
           while(1)
@@ -965,7 +1013,7 @@ menu11:
           }
 
 menu12:  
-          settingDistance = preferences.getFloat("sDistanceVal", 0);
+          settingDistance = preferences.getFloat("sDistanceVal", 0);  
           lcd.clear();
           while(1)
           {       
@@ -1045,4 +1093,4 @@ menu13:
           if (down == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      "); settingTemp = settingTemp - 0.5; }
           if (back == LOW) { delay(300); goto menu9; }
           }
-}
+} 
