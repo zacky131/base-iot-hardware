@@ -1,6 +1,4 @@
-// note: saat pompa on -> jangan kirim data
-
-  ///////////////////////////////////// LIBRARY
+///////////////////////////////////// LIBRARY
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
 
@@ -30,7 +28,7 @@ Preferences preferences;
 Ticker periodicTicker;
 
 ///////////////////////////////////////////////////// FIRST SETUP
-#define TOKEN "komunitashidroponik1"
+#define TOKEN "test" //komunitas
 
 //define relay pin
 // relay_1 = Nutrisi A
@@ -50,13 +48,13 @@ int ECHOPIN = 35; //A2
 #define ONE_WIRE_BUS 14 //7 
 
 // Define DHT sensor connection
-#define DHTPIN 17 //4
+int DHTPIN = 17; //4
 #define DHTTYPE DHT21   // DHT 21  (AM2302)
 DHT dht(DHTPIN, DHTTYPE);   //Initialize DHT sensor for normal 16mhz Arduino
 // Push button
 #define pb_red 13 // Red 9 
-#define pb_green 12 // Yellow 8 
-#define pb_yellow 27 // green 6 
+#define pb_yellow 12 // Yellow 8 
+#define pb_green 27 // green 6 
 #define pb_black 16 // black 5
 
 #define TdsSensorPin 39 //A5
@@ -73,7 +71,7 @@ int down = 0;
 int back = 0;
 
 // Floats to calculate distance
-float duration, distance;
+float duration, jarak;
 
 // Variable for hydroponic sensor 
 float tdsValue, temperature, voltage, phVal;
@@ -94,7 +92,16 @@ float slope, intercept, t, h;
   float settingDistance = 5.0;
   //Starting Temperature Val for setting
   float settingTemp = 25.0;
-    
+
+//initial values 0
+float distance_min_5 = 0;
+float distance_min_4 = 0;
+float distance_min_3 = 0;
+float distance_min_2 = 0;
+float distance_min_1 = 0;
+float avg_distance = 0;
+
+
 char thingsboardServer[] = "178.128.20.61";
 WiFiClient wifi;
 PubSubClient client(wifi);
@@ -106,10 +113,25 @@ DallasTemperature sensors(&oneWire);
 
 DFRobot_PH ph;
 
+//Final_code_email_test
+
+
 
 ///////////////////////////////////////////////////////// SETUP ///////////////////////////////////////
 void setup() {
-// Set output mode for all GPIO pins
+  Serial.begin(115200);
+  dht.begin();  
+  
+  //Init EEPROM
+  preferences.begin("my-app", false);
+   
+  sensors.begin();
+  gravityTds.setPin(TdsSensorPin);
+  gravityTds.setAref(5.0);  //reference voltage on ADC, default 5.0V on Arduino UNO
+  gravityTds.setAdcRange(4096);  //1024   for 10bit ADC;4096 for 12bit ADC
+  gravityTds.begin();  //initialization
+  
+  // Set output mode for all GPIO pins
   pinMode(relay_1, OUTPUT);
   pinMode(relay_2, OUTPUT);
   pinMode(relay_3, OUTPUT);
@@ -121,25 +143,7 @@ void setup() {
   digitalWrite(relay_2, HIGH);
   digitalWrite(relay_3, HIGH);
   digitalWrite(relay_4, HIGH);
-  
-  Serial.begin(115200);
-  dht.begin();
 
-  //Init EEPROM
-  preferences.begin("my-app", false);
-   
-  sensors.begin();
-  gravityTds.setPin(TdsSensorPin);
-  gravityTds.setAref(5.0);  //reference voltage on ADC, default 5.0V on Arduino UNO
-  gravityTds.setAdcRange(4096);  //1024 for 10bit ADC;4096 for 12bit ADC
-  gravityTds.begin();  //initialization
-  
-  
-
-  set_gpio_status(relay_1, 0); //a
-  set_gpio_status(relay_2, 0); //b
-  set_gpio_status(relay_3, 0); //air
-  
     // LCD Display
   pinMode(pb_black,INPUT_PULLUP);
   pinMode(pb_green,INPUT_PULLUP);
@@ -150,7 +154,7 @@ void setup() {
   lcd.backlight(); 
   delay(1000);
   menu();
-  //  preferences.end();
+//  preferences.end();
   lcd.clear();
 
   delay(1000);
@@ -172,126 +176,168 @@ void setup() {
   periodicTicker.attach_ms(5000, sendData_toServer);
 }
 ///////////////////////////////////////////////////////// LOOP ///////////////////////////////////////
-
 void loop() {
   if (!client.connected()) {
     reconnect();
   }
-  getNprintData();
-  client.loop();
-//  auto_control();
+    getNprintData();
+    client.loop();
+//  //sent email notification
+//  if(temperature < settingTemp && inputMessage2 == "true" && !emailSent){
+//      String emailMessage = String("Temperatur Melebihi Batas !!! Temperatur saat ini: ") + 
+//                            String(temperature) + String("C");
+//      if(sendEmailNotification(emailMessage)) {
+//        Serial.println(emailMessage);
+//        emailSent = true;
+//      }
+//      else {
+//        Serial.println("Email failed to send");
+//      }    
+//    }
+//    // Check if temperature is below threshold and if it needs to send the Email alert
+//    else if(tdsValue < settingPPM && inputMessage2 == "true" && !emailSent) {
+//      String emailMessage = String("Nilai TDS Melebihi Batas !!! Kelembapan saat ini: ") + 
+//                            String(tdsValue) + String(" %");
+//      if(sendEmailNotification(emailMessage)) {
+//        Serial.println(emailMessage);
+//        emailSent = false;
+//      }
+//      else {
+//        Serial.println("Email failed to send");
+//      }
+//    }
+//    //tdsValue, temperature, phVal, distance ,lux
+//   else if(phVal < settingPH && inputMessage2 == "true" && !emailSent){
+//    String emailMessage = String("Nilai PH Melebihi Batas !!! PH saat ini: ") + 
+//                            String(phVal) + String(" %");
+//      if(sendEmailNotification(emailMessage)) {
+//        Serial.println(emailMessage);
+//        emailSent = false;
+//      }
+//      else {
+//        Serial.println("Email failed to send");
+//      }
+//    }
+//   else if(jarak < settingDistance && inputMessage2 == "true" && !emailSent){
+//    String emailMessage = String("Jarak air Melebihi Batas !!! jarak saat ini: ") + 
+//                            String(avg_distance) + String(" cm");
+//      if(sendEmailNotification(emailMessage)) {
+//        Serial.println(emailMessage);
+//        emailSent = false;
+//      }
+//      else {
+//        Serial.println("Email failed to send");
+//      }
+//    }
 }
 
-// automatic/manual switch
-void auto_control() {
-  settingDistance = preferences.getFloat("sDistanceVal", 0);
-  settingPPM = preferences.getFloat("sPPMval", 0);
-  
-  MA_distance(); // get average distance
-  auto_relay_control();
-}
 
-// nutrition a to nutrition b ratio. default is 1
-float a_b_ratio = 1;
-
-// initial values 0
-float distance_min_5 = 0;
-float distance_min_4 = 0;
-float distance_min_3 = 0;
-float distance_min_2 = 0;
-float distance_min_1 = 0;
-//distance calculation by MA5
-float avg_distance = 0;
 
 // hapus distance kalo sus, rata rata kalo aman
-void MA_distance(){
-  digitalWrite(TRIGPIN, LOW);
-  delayMicroseconds(2);
- 
-  // Set the trigger pin HIGH for 20us to send pulse
-  digitalWrite(TRIGPIN, HIGH);
-  delayMicroseconds(20);
- 
-  // Return the trigger pin to LOW
-  digitalWrite(TRIGPIN, LOW);
- 
-  // Measure the width of the incoming pulse
-  duration = pulseIn(ECHOPIN, HIGH);
- 
-  distance = (duration / 2) * 3.43;
-  if (distance < 2.5*avg_distance){ //kalo kejauhan diskip aja
-    avg_distance = (distance_min_5 + distance_min_4 + distance_min_3 + distance_min_2 + distance_min_1 + distance)/6;
+void MA_distance(float new_distance){ // data baru setiap 5 detik
+  if (new_distance < 2.5*avg_distance){ //kalo kejauhan diskip aja
+    avg_distance = (distance_min_5 + distance_min_4 + distance_min_3 + distance_min_2 + distance_min_1 + new_distance)/6;
     distance_min_5 = distance_min_4;
     distance_min_4 = distance_min_3;
     distance_min_3 = distance_min_2;
     distance_min_2 = distance_min_1;
-    distance_min_1 = distance;
+    distance_min_1 = new_distance;
   }
 }
+
+// automatic/manual switch belom
 
 
 // relay_1 = Nutrisi A
 // relay_2 = Nutrisi B
 // relay_3 = Air
 // relay_4 = ??
+void relaycontrol(float avg_distance, int measured_ppm, int ppm_setting, float a_b_ratio){
+  // jadiin parameter fungsi
+  // int ppm_setting = 1200; //misal
+  int max_ppm_setting = ppm_setting + 100;
+  int min_ppm_setting = ppm_setting - 200; //1000
+  int time = 5000; //in miliseconds
+  // rata-rata distance (moving average)
+  // float a_b_ratio = nutrisi_a / nutrisi_b
+  int max_distance = 40; //airnya tinggal dikit
+  int min_distance = 20; //airnya udah penuh
 
-void auto_relay_control(){
-  // cek air, isi air
-  while (distance > 30) {
-    set_gpio_status(relay_1, 1); //a
-    set_gpio_status(relay_2, 1); //b
-  };
-  set_gpio_status(relay_1, 0); //a
-  set_gpio_status(relay_2, 0); //b
-    
-  // isi ppm
-  while (ppm < 1000) {
-    set_gpio_status(relay_3, 1); //air
-  };
-  set_gpio_status(relay_3, 0); //air
+  if ((avg_distance > max_distance) || (measured_ppm < min_ppm_setting)){
+    // avg_distance ngelewatin batas max_distance, atau ppm ngelewatin batas minimal
+    while (avg_distance > min_distance){
+      // selama masih belom sampe batas 20 cm
+      while (measured_ppm < max_ppm_setting){
+        // selama masih belom sampe ppm 1300
+        // cek perlu lebih banyak nutrisi A ato B
+        if (a_b_ratio < 1){
+          // a<b, nyalain b lebih lama
+          set_gpio_status(relay_1, 1); //Nutrisi A
+          set_gpio_status(relay_2, 1); //Nutrisi B
+
+          delay(floor(time*a_b_ratio));
+          set_gpio_status(relay_1, 0);//a
+
+          delay(time - floor(time*a_b_ratio));
+          // set_gpio_status(relay_2, 0); //b
+        }
+        else if (a_b_ratio > 1){
+          // a>b, nyalain a lebih lama
+          set_gpio_status(relay_1, 1); //Nutrisi A
+          set_gpio_status(relay_2, 1); //Nutrisi B
+
+          delay(floor(time/a_b_ratio));
+          set_gpio_status(relay_2, 0); //b
+
+          delay(time - floor(time/a_b_ratio));
+          // set_gpio_status(relay_1, 0); //a
+        }
+        else{
+          // a=b, nyalain bareng
+          set_gpio_status(relay_1, 1); //Nutrisi A
+          set_gpio_status(relay_2, 1); //Nutrisi B
+        }
+        // turn on nutrisi A B sampai melebihi target, pisah relay (2 relay)
+        // pake fungsi set_gpio_status(int pin, boolean enabled)
+      }
+      // turn on valve (air) jadiin boolean 0 atau 1
+      set_gpio_status(relay_1, 0); //a
+      set_gpio_status(relay_2, 0); //b
+      set_gpio_status(relay_3, 1); //air
+    }
+  }
+  // turn off all relay
+  set_gpio_status(relay_1, 0);
+  set_gpio_status(relay_2, 0);
+  set_gpio_status(relay_3, 0);
+  // set_gpio_status(relay_4, 0);
   
-  // setiap (?) 30 menit
-  int delay_on = 30; // menit
-  delay(delay_on*60000);
+// setiap 5 menit sekali?
 }
 
-void get_distance(){
-  //code for ultrasonic distance sensor
-  // Set the trigger pin LOW for 2uS
-  digitalWrite(TRIGPIN, LOW);
-  delayMicroseconds(2);
- 
-  // Set the trigger pin HIGH for 20us to send pulse
-  digitalWrite(TRIGPIN, HIGH);
-  delayMicroseconds(20);
- 
-  // Return the trigger pin to LOW
-  digitalWrite(TRIGPIN, LOW);
- 
-  // Measure the width of the incoming pulse
-  duration = pulseIn(ECHOPIN, HIGH);
- 
-  // Determine distance from duration
-  // Use 343 metres per second as speed of sound
-  // Divide by 100 as we want centimeters
- 
-  distance = (duration / 2) * 3.43;
-}
-
-void get_ppm(){
-  k_factor = preferences.getFloat("kFact", 0);
-  //Getting PPM Value from TDS sensor
-  analogValue = analogRead(TdsSensorPin);
-  voltage = analogValue/4096*5.0;
-  ecValue=(133.42*voltage*voltage*voltage - 255.86*voltage*voltage + 857.39*voltage)*k_factor;
-  ecValue25  =  ecValue / (1.0+0.02*(temperature-25.0));  //temperature compensation
-  tdsValue = ecValue25 * 0.5;
-  k = ecValue/(133.42*voltage*voltage*voltage - 255.86*voltage*voltage + 857.39*voltage);
-}
 
 void getNprintData(){
+   //code for ultrasonic distance sensor
+    // Set the trigger pin LOW for 2uS
+    digitalWrite(TRIGPIN, LOW);
+    delayMicroseconds(2);
    
-    get_distance();
+    // Set the trigger pin HIGH for 20us to send pulse
+    digitalWrite(TRIGPIN, HIGH);
+    delayMicroseconds(20);
+   
+    // Return the trigger pin to LOW
+    digitalWrite(TRIGPIN, LOW);
+   
+    // Measure the width of the incoming pulse
+    duration = pulseIn(ECHOPIN, HIGH);
+   
+    // Determine distance from duration
+    // Use 343 metres per second as speed of sound
+    // Divide by 100 as we want centimeters
+   
+    jarak = (duration / 2) * 3.43;
+    
     // Delay before repeating measurement
     delay(100);
 
@@ -300,7 +346,14 @@ void getNprintData(){
     sensors.requestTemperaturesByIndex(0);
     temperature = sensors.getTempCByIndex(0);     //get temperatureerature value from sensor
 
-    get_ppm();
+    //Getting PPM Value from TDS sensor
+    analogValue = analogRead(TdsSensorPin);
+    voltage = analogValue/4096*5.0;
+    ecValue=(133.42*voltage*voltage*voltage - 255.86*voltage*voltage + 857.39*voltage)*k_factor;
+    ecValue25  =  ecValue / (1.0+0.02*(temperature-25.0));  //temperature compensation
+    tdsValue = ecValue25 * 0.5;
+    k = ecValue/(133.42*voltage*voltage*voltage - 255.86*voltage*voltage + 857.39*voltage);
+
 
     //getting PH Value
     voltagePH = analogRead(PH_PIN)/4096.0*5;  // read the voltage
@@ -343,7 +396,7 @@ void getNprintData(){
   
     lcd.setCursor(0,3);
     lcd.print("Jarak(cm): "); 
-    float newDistance = distance/100;
+    float newDistance = jarak/100;
     lcd.print(newDistance,1);
 }
 
@@ -361,7 +414,7 @@ void sendData_toServer(){
     packet.concat(phVal);
   
     packet.concat((",\"Distance\":"));
-    float newDistance = distance/100;
+    float newDistance = jarak/100;
     packet.concat(newDistance);
   
     packet.concat((",\"Room Temperature\":"));
@@ -496,109 +549,36 @@ void reconnect() {
 // Menu Selection and Choice
 void menu(){
 menu:
-    set_gpio_status(relay_1, 0); //a
-    set_gpio_status(relay_2, 0); //b
-    set_gpio_status(relay_3, 0); //air
-    lcd.clear();
-    while(1)
-    {
+          lcd.clear();
+          while(1)
+          {
 
-    lcd.setCursor(0,0);
-    lcd.print("1. Calibration");          
-    lcd.setCursor(0,1);
-    lcd.print("2. Start Online");
-    lcd.setCursor(0,2);
-    lcd.print("3. Set Parameter");
-    lcd.setCursor(0,3);
-    lcd.print("4. Start Offline");
-    delay(100);
-    
-    ok = digitalRead(pb_red);
-    up = digitalRead(pb_yellow);
-    down = digitalRead(pb_green);
-    back = digitalRead(pb_black);
-    
-    if (ok == LOW) { delay(300); goto menu1; }
-    if (up == LOW) { delay(300); return; }
-    if (down == LOW) { delay(300); goto menu7;  }
-    if (back == LOW) { delay(300); goto menuOffline;  }
-    }   
+          lcd.setCursor(0,0);
+          lcd.print("1. Calibration");          
+          lcd.setCursor(0,1);
+          lcd.print("2. Start Online");
+          lcd.setCursor(0,2);
+          lcd.print("3. Set Parameter");
+          lcd.setCursor(0,3);
+          lcd.print("4. Start Offline");
+          delay(100);
+          
+          ok = digitalRead(pb_red);
+          up = digitalRead(pb_yellow);
+          down = digitalRead(pb_green);
+          back = digitalRead(pb_black);
+          
+          
+          if (ok == LOW) { delay(300); goto menu1; }
+          if (up == LOW) { delay(300); return; }
+          if (down == LOW) { delay(300); goto menu7;  }
+          if (back == LOW) { delay(300); goto menuOffline;  }
+          }   
           
 menuOffline:
   while(1){
-    set_gpio_status(relay_1, 0); //a
-    set_gpio_status(relay_2, 0); //b
-    set_gpio_status(relay_3, 0); //air
     getNprintData();
-    ok = digitalRead(pb_red);
-    up = digitalRead(pb_yellow);
-    down = digitalRead(pb_green);
-    back = digitalRead(pb_black);
-    
-    if (ok == LOW) { delay(300); goto menuManualControl; }
-    if (up == LOW) { delay(300); goto menuManualControl; }
-    if (down == LOW) { delay(300); goto menuManualControl; }
-    if (back == LOW) { delay(300); goto menu; }
-  }
-
-menuManualControl:
-  lcd.clear();
-  while(1){
-    //read and show ppm
-    get_ppm();
-    lcd.setCursor(0,0);
-    lcd.print("                    ");
-    
-    lcd.setCursor(0,0);
-    lcd.print("PPM: ");
-    lcd.setCursor(5,0);
-    lcd.print(tdsValue,0);
-
-    //read and show water distance
-    MA_distance();
-    lcd.setCursor(10,0);
-    lcd.print("Dis: ");
-    lcd.setCursor(14,0);
-    lcd.print((distance/100),1);
-
-    lcd.setCursor(0,1);
-    lcd.print("1. Add nutrition");
-    
-    lcd.setCursor(0,2);
-    lcd.print("2. Add water");
-    
-    lcd.setCursor(0,3);
-    lcd.print("4. Back");
-    
-    delay(100);
-    
-    ok = digitalRead(pb_red);
-    if (ok == LOW) { 
-      delay(100);
-      set_gpio_status(relay_1, 1); //a
-      set_gpio_status(relay_2, 1); //b
-    }
-    else {
-      delay(100);
-      set_gpio_status(relay_1, 0); //a
-      set_gpio_status(relay_2, 0); //b
-    };
-
-    up = digitalRead(pb_yellow);
-    if (up == LOW) { 
-      delay(100);
-      set_gpio_status(relay_3, 1); //air
-    } 
-    else { 
-      delay(100);
-      set_gpio_status(relay_3, 0); //air
-    };
-    
-    down = digitalRead(pb_green);
-    if (down == LOW) {  };
-
-    back = digitalRead(pb_black);
-    if (back == LOW) { delay(300); goto menuOffline; };
+    delay(500);
   }
 
 menu1:
@@ -1094,4 +1074,50 @@ menu13:
           if (down == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      "); settingTemp = settingTemp - 0.5; }
           if (back == LOW) { delay(300); goto menu9; }
           }
-} 
+}
+
+//bool sendEmailNotification(String emailMessage){
+//  // Set the SMTP Server Email host, port, account and password
+//  smtpData.setLogin(smtpServer, smtpServerPort, emailSenderAccount, emailSenderPassword);
+//
+//  // For library version 1.2.0 and later which STARTTLS protocol was supported,the STARTTLS will be 
+//  // enabled automatically when port 587 was used, or enable it manually using setSTARTTLS function.
+//  //smtpData.setSTARTTLS(true);
+//
+//  // Set the sender name and Email
+//  smtpData.setSender("ESP32", emailSenderAccount);
+//
+//  // Set Email priority or importance High, Normal, Low or 1 to 5 (1 is highest)
+//  smtpData.setPriority("High");
+//
+//  // Set the subject
+//  smtpData.setSubject(emailSubject);
+//
+//  // Set the message with HTML format
+//  smtpData.setMessage(emailMessage, true);
+//
+//  // Add recipients
+//  smtpData.addRecipient(inputMessage);
+//
+//  smtpData.setSendCallback(sendCallback);
+//
+//  // Start sending Email, can be set callback function to track the status
+//  if (!MailClient.sendMail(smtpData)) {
+//    Serial.println("Error sending Email, " + MailClient.smtpErrorReason());
+//    return false;
+//  }
+//  // Clear all data from Email object to free memory
+//  smtpData.empty();
+//  return true;
+//}
+//
+//// Callback function to get the Email sending status
+//void sendCallback(SendStatus msg) {
+//  // Print the current status
+//    Serial.println(msg.info());
+//
+//  // Do something when complete
+//  if (msg.success()) {
+//    Serial.println("----------------");
+//  }
+//}
