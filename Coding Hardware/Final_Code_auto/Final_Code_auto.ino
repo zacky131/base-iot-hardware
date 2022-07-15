@@ -36,7 +36,7 @@ Ticker periodicTicker;
 // relay_1 = Nutrisi A
 // relay_2 = Nutrisi B
 // relay_3 = Air
-// relay_4 = ?? 
+// relay_4 = ??
 #define relay_1 18 //13
 #define relay_2 19 //12
 #define relay_3 23 //11
@@ -94,7 +94,13 @@ float slope, intercept, t, h;
   float settingDistance = 5.0;
   //Starting Temperature Val for setting
   float settingTemp = 25.0;
-    
+
+  //intrrupt time (send to internet) (minutes)
+  int interrupt_time = 1;
+
+  //delay time for check automation parameter (offline) (minutes)
+  int delay_time_check = 1;
+  
 char thingsboardServer[] = "178.128.20.61";
 WiFiClient wifi;
 PubSubClient client(wifi);
@@ -117,25 +123,23 @@ void setup() {
   pinMode(ECHOPIN, INPUT);
   pinMode(TRIGPIN, OUTPUT);
 
-  digitalWrite(relay_1, HIGH);
-  digitalWrite(relay_2, HIGH);
-  digitalWrite(relay_3, HIGH);
-  digitalWrite(relay_4, HIGH);
+  digitalWrite(relay_1, LOW);
+  digitalWrite(relay_2, LOW);
+  digitalWrite(relay_3, LOW);
+  digitalWrite(relay_4, LOW);
   
   Serial.begin(115200);
   dht.begin();
 
   //Init EEPROM
   preferences.begin("my-app", false);
-   
+  
   sensors.begin();
   gravityTds.setPin(TdsSensorPin);
   gravityTds.setAref(5.0);  //reference voltage on ADC, default 5.0V on Arduino UNO
   gravityTds.setAdcRange(4096);  //1024 for 10bit ADC;4096 for 12bit ADC
   gravityTds.begin();  //initialization
   
-  
-
   set_gpio_status(relay_1, 0); //a
   set_gpio_status(relay_2, 0); //b
   set_gpio_status(relay_3, 0); //air
@@ -154,22 +158,29 @@ void setup() {
   lcd.clear();
 
   delay(1000);
-  lcd.setCursor(6,0);
-  lcd.print("Welcome"); 
-  delay(2000);
+//  lcd.setCursor(6,0);
+//  lcd.print("Welcome"); 
+//  delay(2000);
 
   neutralVoltage = preferences.getFloat("vPHneu", 0);
   acidVoltage = preferences.getFloat("vPHacid", 0); 
   k_factor = preferences.getFloat("kFact", 0);
-   
+
+  // both in minutes
+  interrupt_time = preferences.getInt("sIntTime");
+  delay_time_check = preferences.getInt("sTimeC");
+//  auto_control();
   delay(10);
-  InitWiFi();
-  client.setServer( thingsboardServer, 1883 );
-  client.setCallback(on_message);
+  
+  
+//  InitWiFi();
+//  client.setServer( thingsboardServer, 1883 );
+//  client.setCallback(on_message);
 
   //interupt
   // bisa ubah sampling time di sini
-  periodicTicker.attach_ms(5000, sendData_toServer);
+  // interrupt_time in minutes
+//  periodicTicker.attach_ms(interrupt_time*60000, sendData_toServer);
 }
 ///////////////////////////////////////////////////////// LOOP ///////////////////////////////////////
 
@@ -179,55 +190,16 @@ void loop() {
   }
   getNprintData();
   client.loop();
-//  auto_control();
 }
 
-// automatic/manual switch
 void auto_control() {
   settingDistance = preferences.getFloat("sDistanceVal", 0);
   settingPPM = preferences.getFloat("sPPMval", 0);
-  
-  MA_distance(); // get average distance
   auto_relay_control();
 }
 
 // nutrition a to nutrition b ratio. default is 1
 float a_b_ratio = 1;
-
-// initial values 0
-float distance_min_5 = 0;
-float distance_min_4 = 0;
-float distance_min_3 = 0;
-float distance_min_2 = 0;
-float distance_min_1 = 0;
-//distance calculation by MA5
-float avg_distance = 0;
-
-// hapus distance kalo sus, rata rata kalo aman
-void MA_distance(){
-  digitalWrite(TRIGPIN, LOW);
-  delayMicroseconds(2);
- 
-  // Set the trigger pin HIGH for 20us to send pulse
-  digitalWrite(TRIGPIN, HIGH);
-  delayMicroseconds(20);
- 
-  // Return the trigger pin to LOW
-  digitalWrite(TRIGPIN, LOW);
- 
-  // Measure the width of the incoming pulse
-  duration = pulseIn(ECHOPIN, HIGH);
- 
-  distance = (duration / 2) * 3.43;
-  if (distance < 2.5*avg_distance){ //kalo kejauhan diskip aja
-    avg_distance = (distance_min_5 + distance_min_4 + distance_min_3 + distance_min_2 + distance_min_1 + distance)/6;
-    distance_min_5 = distance_min_4;
-    distance_min_4 = distance_min_3;
-    distance_min_3 = distance_min_2;
-    distance_min_2 = distance_min_1;
-    distance_min_1 = distance;
-  }
-}
 
 
 // relay_1 = Nutrisi A
@@ -236,23 +208,32 @@ void MA_distance(){
 // relay_4 = ??
 
 void auto_relay_control(){
+  // perlu ada button buat ngestop? pake interrupt?
   // cek air, isi air
-  while (distance > 30) {
+  getNprintData();
+  while (distance/100 > settingDistance) {
+    lcd.setCursor(16,0);
+    lcd.print("AUTO");
+    
+    set_gpio_status(relay_3, 1); //air
+    getNprintData();
+    delay(100);
+  }
+  set_gpio_status(relay_3, 0); //air off
+  
+//  bool stopnutrients = false;
+  while (tdsValue < settingPPM) {
     set_gpio_status(relay_1, 1); //a
     set_gpio_status(relay_2, 1); //b
+    getNprintData();
+    delay(100);
   };
-  set_gpio_status(relay_1, 0); //a
-  set_gpio_status(relay_2, 0); //b
+  set_gpio_status(relay_1, 0); //a off
+  set_gpio_status(relay_2, 0); //b off
     
-  // isi ppm
-  while (ppm < 1000) {
-    set_gpio_status(relay_3, 1); //air
-  };
-  set_gpio_status(relay_3, 0); //air
-  
-  // setiap (?) 30 menit
-  int delay_on = 30; // menit
-  delay(delay_on*60000);
+  // delay in minutes
+  delay_time_check = preferences.getInt("sTimeC");
+  delay(delay_time_check*60000);
 }
 
 void get_distance(){
@@ -325,7 +306,7 @@ void getNprintData(){
     
     lcd.setCursor(0,0);
     lcd.print("PPM:"); 
-    lcd.print(tdsValue);
+    lcd.print(tdsValue,0);
     
     lcd.setCursor(0,1);
     lcd.print("T1:"); 
@@ -375,44 +356,44 @@ void sendData_toServer(){
 
 }
 // The callback for when a PUBLISH message is received from the server.
-void on_message(const char* topic, byte* payload, unsigned int length) {
-
-  Serial.println("On message");
-
-  char json[length + 1];
-  strncpy (json, (char*)payload, length);
-  json[length] = '\0';
-
-  Serial.print("Topic: ");
-  Serial.println(topic);
-  Serial.print("Message: ");
-  Serial.println(json);
-
-  // Decode JSON request
-  StaticJsonBuffer<200> jsonBuffer;
-  JsonObject& data = jsonBuffer.parseObject((char*)json);
-
-  if (!data.success())
-  {
-    Serial.println("parseObject() failed");
-    return;
-  }
-
-  // Check request method
-  String methodName = String((const char*)data["method"]);
-
-  if (methodName.equals("getValue")) {
-    // Reply with GPIO status
-    String responseTopic = String(topic);
-    responseTopic.replace("request", "response");
-
-  } else if (methodName.equals("setValue")) {
-    // Update GPIO status and reply
-    set_gpio_status(data["params"]["pin"], data["params"]["enabled"]);
-    String responseTopic = String(topic);
-    responseTopic.replace("request", "response");
-  }
-}
+//void on_message(const char* topic, byte* payload, unsigned int length) {
+//
+//  Serial.println("On message");
+//
+//  char json[length + 1];
+//  strncpy (json, (char*)payload, length);
+//  json[length] = '\0';
+//
+//  Serial.print("Topic: ");
+//  Serial.println(topic);
+//  Serial.print("Message: ");
+//  Serial.println(json);
+//
+//  // Decode JSON request
+//  StaticJsonBuffer<200> jsonBuffer;
+//  JsonObject& data = jsonBuffer.parseObject((char*)json);
+//
+//  if (!data.success())
+//  {
+//    Serial.println("parseObject() failed");
+//    return;
+//  }
+//
+//  // Check request method
+//  String methodName = String((const char*)data["method"]);
+//
+//  if (methodName.equals("getValue")) {
+//    // Reply with GPIO status
+//    String responseTopic = String(topic);
+//    responseTopic.replace("request", "response");
+//
+//  } else if (methodName.equals("setValue")) {
+//    // Update GPIO status and reply
+//    set_gpio_status(data["params"]["pin"], data["params"]["enabled"]);
+//    String responseTopic = String(topic);
+//    responseTopic.replace("request", "response");
+//  }
+//}
 
 
 void set_gpio_status(int pin, boolean enabled) {
@@ -525,21 +506,51 @@ menu:
     }   
           
 menuOffline:
+  lcd.clear();
   while(1){
     set_gpio_status(relay_1, 0); //a
     set_gpio_status(relay_2, 0); //b
     set_gpio_status(relay_3, 0); //air
+    
     getNprintData();
+
+    Serial.print(distance);
+    lcd.setCursor(10,0);
+    lcd.print("  1.A  2.M");
+    
     ok = digitalRead(pb_red);
     up = digitalRead(pb_yellow);
     down = digitalRead(pb_green);
     back = digitalRead(pb_black);
     
-    if (ok == LOW) { delay(300); goto menuManualControl; }
+    if (ok == LOW) { delay(300); goto menuAutoControl; }
+//    if (ok == LOW) { delay(300); return; }
     if (up == LOW) { delay(300); goto menuManualControl; }
-    if (down == LOW) { delay(300); goto menuManualControl; }
+    if (down == LOW) { }
     if (back == LOW) { delay(300); goto menu; }
   }
+
+menuAutoControl:
+  lcd.clear();
+  while(1){
+    //read and show ppm
+    auto_control();
+    
+    delay(100);
+    
+    ok = digitalRead(pb_red);
+    if (ok == LOW) { };
+
+    up = digitalRead(pb_yellow);
+    if (up == LOW) { };
+    
+    down = digitalRead(pb_green);
+    if (down == LOW) {  };
+
+    back = digitalRead(pb_black);
+    if (back == LOW) { delay(300); goto menuOffline; };
+  }
+
 
 menuManualControl:
   lcd.clear();
@@ -555,7 +566,7 @@ menuManualControl:
     lcd.print(tdsValue,0);
 
     //read and show water distance
-    MA_distance();
+    get_distance();
     lcd.setCursor(10,0);
     lcd.print("Dis: ");
     lcd.setCursor(14,0);
@@ -851,6 +862,9 @@ menu7:
           
           lcd.setCursor(0,1);
           lcd.print("2.Jarak|Temp Set");
+
+          lcd.setCursor(0,2);
+          lcd.print("3.Check|Send Time");
           
           lcd.setCursor(0,3);
           lcd.print("4.Back");
@@ -865,7 +879,7 @@ menu7:
           
           if (ok == LOW) { delay(300); goto menu8; }
           if (up == LOW) { delay(300); goto menu9; }
-          if (down == LOW) {  }
+          if (down == LOW) { delay(300); goto menu14; }
           if (back == LOW) { delay(300); goto menu; }
           }
 
@@ -1093,5 +1107,117 @@ menu13:
           if (up == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      ");  settingTemp = settingTemp + 0.5; }
           if (down == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      "); settingTemp = settingTemp - 0.5; }
           if (back == LOW) { delay(300); goto menu9; }
+          }
+
+menu14:
+          lcd.clear();
+          while(1)
+          {
+          
+          lcd.setCursor(0,0);
+          lcd.print("1.Check Time");
+          
+          lcd.setCursor(0,1);
+          lcd.print("2.To Internet Time");
+          
+          lcd.setCursor(0,3);
+          lcd.print("4. Back");
+          
+          delay(100);
+          
+          ok = digitalRead(pb_red);
+          up = digitalRead(pb_yellow);
+          down = digitalRead(pb_green);
+          back = digitalRead(pb_black);
+          
+          
+          if (ok == LOW) { delay(300); goto menu15; }
+          if (up == LOW) { delay(300); goto menu16; }
+          if (down == LOW) { delay(300); }
+          if (back == LOW) { delay(300); goto menu7; }
+          }
+// check time
+menu15:
+          
+          delay_time_check = preferences.getInt("sTimeC");
+          lcd.clear();
+          while(1)
+          {       
+          
+          lcd.setCursor(0,0);
+          lcd.print("Check Time (m): ");
+          lcd.print(delay_time_check);
+          
+          lcd.setCursor(0,2);
+          lcd.print("1. Set");
+
+          lcd.setCursor(0,3);
+          lcd.print("2. Up");
+
+          lcd.setCursor(13,2);
+          lcd.print("3. Down");
+         
+
+          lcd.setCursor(13,3);
+          lcd.print("4. Back");
+          delay(100);
+          
+          ok = digitalRead(pb_red);
+          up = digitalRead(pb_yellow);
+          down = digitalRead(pb_green);
+          back = digitalRead(pb_black);
+          
+          if (ok == LOW) { 
+            delay(300); 
+            preferences.putInt("sTimeC", delay_time_check);
+            goto menu14;
+            }
+
+          
+          if (up == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      ");  delay_time_check = delay_time_check + 1; }
+          if (down == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      "); delay_time_check = delay_time_check - 1; }
+          if (back == LOW) { delay(300); goto menu14; }
+          }
+
+          
+// send to internet delay time
+menu16:
+          interrupt_time = preferences.getInt("sIntTime");
+          lcd.clear();
+          while(1)
+          {       
+          
+          lcd.setCursor(0,0);
+          lcd.print("Send Time (m): ");
+          lcd.print(interrupt_time);
+          
+          lcd.setCursor(0,2);
+          lcd.print("1. Set");
+
+          lcd.setCursor(0,3);
+          lcd.print("2. Up");
+
+          lcd.setCursor(13,2);
+          lcd.print("3. Down");
+         
+
+          lcd.setCursor(13,3);
+          lcd.print("4. Back");
+          delay(100);
+          
+          ok = digitalRead(pb_red);
+          up = digitalRead(pb_yellow);
+          down = digitalRead(pb_green);
+          back = digitalRead(pb_black);
+          
+          if (ok == LOW) { 
+            delay(300); 
+            preferences.putInt("sIntTime", interrupt_time);
+            goto menu14;
+            }
+
+          if (up == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      ");  interrupt_time = interrupt_time + 1; }
+          if (down == LOW) { delay(50); lcd.setCursor(9,0); lcd.print("      "); interrupt_time = interrupt_time - 1; }
+          if (back == LOW) { delay(300); goto menu14; }
           }
 } 
